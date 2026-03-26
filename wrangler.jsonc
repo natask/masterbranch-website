@@ -1,0 +1,27 @@
+{
+  "name": "masterbranch",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-04-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "r2_buckets": [
+    { "binding": "IMAGES_BUCKET", "bucket_name": "masterbranch-images", "remote": true }
+  ],
+  "routes": [
+    { "pattern": "masterbranch.club/*", "zone_name": "masterbranch.club" },
+    { "pattern": "www.masterbranch.club/*", "zone_name": "masterbranch.club" }
+  ],
+  "env": {
+    "dev": {
+      "name": "masterbranch-dev",
+      "routes": []
+    },
+    "canary": {
+      "name": "masterbranch-canary",
+      "routes": []
+    }
+  }
+}

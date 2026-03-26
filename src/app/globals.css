@@ -1,0 +1,495 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.75rem;
+  --background: #07060a;
+  --foreground: rgba(255, 255, 255, 0.65);
+  --card: #0d0c10;
+  --card-foreground: rgba(255, 255, 255, 0.85);
+  --popover: #0d0c10;
+  --popover-foreground: #ffffff;
+  --primary: #c9a55c;
+  --primary-foreground: #07060a;
+  --secondary: #161419;
+  --secondary-foreground: #ffffff;
+  --muted: #161419;
+  --muted-foreground: #9d97aa;
+  --accent: #161419;
+  --accent-foreground: #ffffff;
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: #c9a55c;
+  --chart-1: #c9a55c;
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: #0d0c10;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #c9a55c;
+  --sidebar-primary-foreground: #07060a;
+  --sidebar-accent: #161419;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #c9a55c;
+}
+
+.dark {
+  --background: #07060a;
+  --foreground: rgba(255, 255, 255, 0.65);
+  --card: #0d0c10;
+  --card-foreground: rgba(255, 255, 255, 0.85);
+  --popover: #0d0c10;
+  --popover-foreground: #ffffff;
+  --primary: #c9a55c;
+  --primary-foreground: #07060a;
+  --secondary: #161419;
+  --secondary-foreground: #ffffff;
+  --muted: #161419;
+  --muted-foreground: #9d97aa;
+  --accent: #161419;
+  --accent-foreground: #ffffff;
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: #c9a55c;
+  --chart-1: #c9a55c;
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: #0d0c10;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #c9a55c;
+  --sidebar-primary-foreground: #07060a;
+  --sidebar-accent: #161419;
+  --sidebar-accent-foreground: #f5f0e8;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #c9a55c;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-gold: #c9a55c;
+  --color-gold-light: #e0c882;
+  --color-gold-dark: #a07d3a;
+  --color-gold-muted: rgba(201, 165, 92, 0.15);
+  --font-sans: var(--font-cormorant);
+  --font-mono: var(--font-jetbrains);
+  --font-serif: var(--font-cormorant);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+  }
+  html {
+    font-size: 28px;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-cormorant), Georgia, serif;
+  }
+}
+
+/* ---- Custom utilities ---- */
+
+.font-cormorant {
+  font-family: var(--font-cormorant);
+}
+
+.font-cinzel {
+  font-family: var(--font-cinzel);
+}
+
+/* Gold gradient text */
+.text-gold-gradient {
+  background: linear-gradient(135deg, #e0c882 0%, #c9a55c 40%, #a07d3a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Warm glow */
+.glow-gold {
+  box-shadow: 0 0 80px -20px rgba(201, 165, 92, 0.12);
+}
+
+.glow-gold-sm {
+  box-shadow: 0 0 40px -10px rgba(201, 165, 92, 0.08);
+}
+
+/* Bento grid */
+.bento-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 768px) {
+  .bento-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bento-cell {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 2rem;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.bento-cell:hover {
+  border-color: rgba(201, 165, 92, 0.2);
+  box-shadow: 0 4px 32px -8px rgba(0, 0, 0, 0.5);
+}
+
+.bento-cell-wide {
+  grid-column: span 2;
+}
+
+@media (max-width: 768px) {
+  .bento-cell-wide {
+    grid-column: span 1;
+  }
+}
+
+/* ---- Progressive appearance — opacity only, no movement ---- */
+@keyframes appear {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Used for session-gated buttons once isPending resolves */
+.appear-auth {
+  animation: appear 0.35s ease both;
+}
+
+.appear-1 { animation: appear 0.4s ease both; animation-delay: 0s; }
+.appear-2 { animation: appear 0.4s ease both; animation-delay: 0.15s; }
+.appear-3 { animation: appear 0.4s ease both; animation-delay: 0.35s; }
+
+/* ---- Gold shimmer on hero text ---- */
+@keyframes goldShimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.text-gold-shimmer {
+  background: linear-gradient(
+    90deg,
+    #a07d3a 0%,
+    #c9a55c 25%,
+    #f5e6b8 50%,
+    #c9a55c 75%,
+    #a07d3a 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: goldShimmer 4s linear infinite;
+}
+
+/* ---- Border beam animation ---- */
+/* Uses ::after only — ::before is reserved for shimmer-pill */
+
+.border-beam {
+  position: relative;
+  overflow: hidden;
+}
+
+.border-beam::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    var(--beam-rotation, 0deg),
+    transparent 0%,
+    transparent 40%,
+    rgba(201, 165, 92, 0.6) 50%,
+    transparent 60%,
+    transparent 100%
+  );
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  padding: 1px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  animation: beamRotate 3s linear infinite;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.border-beam:hover::after {
+  opacity: 1;
+}
+
+@keyframes beamRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ---- Pill button — golden, hover shimmer ---- */
+@keyframes shimmerSlide {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(200%); }
+}
+
+.shimmer-pill {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: #c9a55c !important;
+  color: #07060a !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* left-to-right shimmer on hover — uses ::before so ::after is free for border-beam */
+.shimmer-pill::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    105deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.15) 40%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0.15) 60%,
+    transparent 80%
+  );
+  transform: translateX(-100%);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 2;
+}
+
+.shimmer-pill:hover::before {
+  opacity: 1;
+  animation: shimmerSlide 1.2s ease forwards;
+}
+
+/* ---- Page-level flashlight background ---- */
+.flashlight-bg {
+  position: relative;
+}
+
+.flashlight-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    600px circle at var(--fl-x, -600px) var(--fl-y, -600px),
+    rgba(201, 165, 92, 0.04) 0%,
+    transparent 70%
+  );
+  transition: background 0.05s linear;
+}
+
+/* ---- Project card — Delphi-style tilt + physical light ---- */
+
+/* Register --spotlight-opacity so the browser can interpolate it */
+@property --spotlight-opacity {
+  syntax: "<number>";
+  initial-value: 0;
+  inherits: false;
+}
+
+.project-card {
+  position: relative;
+  overflow: hidden;
+  will-change: transform;
+  /* Let Tailwind's rounded-* class set border-radius — don't override it */
+  box-shadow:
+    /* bevel: top-left highlight */
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    1px 0 0 rgba(255, 255, 255, 0.04) inset,
+    /* bevel: bottom-right shadow */
+    0 -1px 0 rgba(0, 0, 0, 0.25) inset,
+    -1px 0 0 rgba(0, 0, 0, 0.15) inset,
+    /* depth */
+    0 2px 6px rgba(0, 0, 0, 0.4),
+    0 8px 24px rgba(0, 0, 0, 0.3);
+  /* Fade the spotlight in/out */
+  transition: --spotlight-opacity 0.5s ease;
+}
+
+.project-card:hover {
+  box-shadow:
+    /* bevel: top-left highlight */
+    0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    1px 0 0 rgba(255, 255, 255, 0.06) inset,
+    /* bevel: bottom-right shadow */
+    0 -1px 0 rgba(0, 0, 0, 0.3) inset,
+    -1px 0 0 rgba(0, 0, 0, 0.2) inset,
+    /* depth */
+    0 6px 14px rgba(0, 0, 0, 0.5),
+    0 18px 40px rgba(0, 0, 0, 0.4),
+    0 0 60px -12px rgba(201, 165, 92, 0.12);
+}
+
+/* Cursor spotlight — flashlight cone that fades in on hover */
+.project-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: var(--spotlight-opacity);
+  background: radial-gradient(
+    320px circle at var(--mouse-x, -400px) var(--mouse-y, -400px),
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.07) 40%,
+    transparent 70%
+  );
+  z-index: 2;
+  mix-blend-mode: screen;
+}
+
+/* Cursor-tracked border rim — glows gold where the light hits */
+.project-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  opacity: var(--spotlight-opacity);
+  background: radial-gradient(
+    280px circle at var(--mouse-x, -400px) var(--mouse-y, -400px),
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(201, 165, 92, 0.25) 30%,
+    transparent 60%
+  );
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* ---- Marquee infinite loop ---- */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.marquee {
+  display: flex;
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+
+.marquee-inner {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+  animation: marquee 30s linear infinite;
+  will-change: transform;
+}
+
+.marquee:hover .marquee-inner {
+  animation-play-state: paused;
+}
+
+.text-clip-down { /* kept for compat — no-op */ }
+.hero-enter     { /* kept for compat — no-op */ }
+.nav-auth-ready { animation: appear 0.35s ease both; }
+
+/* ---- Section backgrounds for visual rhythm ---- */
+.section-alt {
+  background: #0b0a0e;
+}
+
+/* ---- Vertical lines overlay ---- */
+.vertical-lines {
+  position: relative;
+}
+
+.vertical-lines::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to right,
+    transparent,
+    transparent calc(25% - 0.5px),
+    rgba(255, 255, 255, 0.03) calc(25% - 0.5px),
+    rgba(255, 255, 255, 0.03) calc(25% + 0.5px),
+    transparent calc(25% + 0.5px),
+    transparent
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ---- Enhanced layered shadows ---- */
+.shadow-layered {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 4px 8px rgba(0, 0, 0, 0.15),
+    0 16px 32px rgba(0, 0, 0, 0.1);
+}
+
+.shadow-layered-gold {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    0 4px 8px rgba(0, 0, 0, 0.15),
+    0 16px 32px rgba(0, 0, 0, 0.1),
+    0 0 60px -15px rgba(201, 165, 92, 0.1);
+}
