@@ -178,14 +178,11 @@ function CardItem({
               />
             )}
             <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent" />
-            <div className="absolute right-2.5 top-2.5 flex gap-1.5">
-              {project.githubUrl && (
-                <Badge variant="secondary" className="bg-background/75 text-xs backdrop-blur-md">GitHub</Badge>
-              )}
-              {project.tracesPublic && (
+            {project.tracesPublic && (
+              <div className="absolute right-2.5 top-2.5">
                 <Badge className="bg-gold/75 text-primary-foreground text-xs backdrop-blur-md">Traces</Badge>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Card body */}
