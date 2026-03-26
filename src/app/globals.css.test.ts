@@ -28,3 +28,22 @@ describe("shimmer-pill + border-beam CSS compatibility", () => {
     expect(beamBlock).toContain("z-index: 3");
   });
 });
+
+describe("border-radius preservation on hover", () => {
+  it("border-beam does not use overflow: hidden (would clip rounded corners during rotation)", () => {
+    const beamBase = css.match(/\.border-beam\s*\{[^}]+\}/)?.[0] ?? "";
+    expect(beamBase).not.toContain("overflow: hidden");
+    expect(beamBase).not.toContain("overflow:hidden");
+  });
+
+  it("border-beam ::after uses inset: 0 (not negative offsets that break radius)", () => {
+    const beamAfter = css.match(/\.border-beam::after\s*\{[^}]+\}/)?.[0] ?? "";
+    expect(beamAfter).toContain("inset: 0");
+    expect(beamAfter).not.toMatch(/top:\s*-/);
+  });
+
+  it("border-beam ::after inherits border-radius", () => {
+    const beamAfter = css.match(/\.border-beam::after\s*\{[^}]+\}/)?.[0] ?? "";
+    expect(beamAfter).toContain("border-radius: inherit");
+  });
+});
