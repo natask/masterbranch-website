@@ -256,21 +256,19 @@ export function UploadModal({
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose} />
 
       <div className="relative z-10 w-full max-w-lg rounded-2xl border border-border bg-card p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="mb-6 flex items-start justify-between">
-          <div>
-            <h2 className="font-serif text-2xl font-bold">Upload Project</h2>
-            {hasDraft && (
-              <span className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                Draft
-              </span>
-            )}
-          </div>
-          <button onClick={handleClose} className="text-muted-foreground transition-colors hover:text-foreground" aria-label="Close">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
+        <button onClick={handleClose} className="absolute top-4 right-4 z-10 text-muted-foreground transition-colors hover:text-foreground" aria-label="Close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+        <div className="mb-6 pr-8">
+          <h2 className="font-serif text-2xl font-bold">Upload Project</h2>
+          {hasDraft && (
+            <span className="mt-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+              Draft
+            </span>
+          )}
         </div>
 
         <div className="space-y-5">
