@@ -40,10 +40,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body
-        className={`${cormorant.variable} ${cinzel.variable} ${jetbrainsMono.variable} appear-1 antialiased min-h-screen`}
+        className={`${cormorant.variable} ${cinzel.variable} ${jetbrainsMono.variable} appear-1 antialiased flex min-h-screen flex-col`}
       >
         <QueryProvider>
-          {children}
+          <main className="flex-1">
+            {children}
+          </main>
         </QueryProvider>
         <Footer />
         <FontConfigurator />
