@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "launched_at" timestamp;
