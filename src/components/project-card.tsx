@@ -23,6 +23,9 @@ export function ProjectCard({
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const el = ref.current;
     if (!el) return;
+    // Skip tilt when hovering over interactive elements
+    const target = e.target as HTMLElement;
+    if (target.closest("a, button, input, textarea, [role='button']")) return;
     if (frameRef.current) cancelAnimationFrame(frameRef.current);
     frameRef.current = requestAnimationFrame(() => {
       const rect = el.getBoundingClientRect();
