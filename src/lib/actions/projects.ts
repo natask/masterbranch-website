@@ -6,6 +6,7 @@ import { getSession, requireSession } from "@/lib/auth-server";
 import { eq, ilike, or, and, count, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { capitalizeFirst } from "./capitalize";
 
 export async function createProject(formData: FormData) {
   const session = await requireSession();
@@ -22,8 +23,8 @@ export async function createProject(formData: FormData) {
   const [project] = await db
     .insert(projects)
     .values({
-      title: title.trim(),
-      description: description?.trim() || null,
+      title: capitalizeFirst(title) || title.trim(),
+      description: capitalizeFirst(description),
       githubUrl: githubUrl?.trim() || null,
       demoUrl: demoUrl?.trim() || null,
       createdBy: session.user.id,
@@ -57,8 +58,8 @@ export async function updateProject(id: string, formData: FormData) {
   await db
     .update(projects)
     .set({
-      title: title.trim(),
-      description: description?.trim() || null,
+      title: capitalizeFirst(title) || title.trim(),
+      description: capitalizeFirst(description),
       githubUrl: githubUrl?.trim() || null,
       tracesPublic,
       updatedAt: new Date(),
@@ -88,8 +89,8 @@ export async function saveDraft(data: {
     await db
       .update(projects)
       .set({
-        title: data.title?.trim() || existing.title,
-        description: data.description?.trim() || null,
+        title: capitalizeFirst(data.title) || existing.title,
+        description: capitalizeFirst(data.description),
         githubUrl: data.githubUrl?.trim() || null,
         demoUrl: data.demoUrl?.trim() || null,
         imageUrl: data.imageUrl?.trim() || existing.imageUrl,
@@ -102,8 +103,8 @@ export async function saveDraft(data: {
   const [project] = await db
     .insert(projects)
     .values({
-      title: data.title?.trim() || "Untitled",
-      description: data.description?.trim() || null,
+      title: capitalizeFirst(data.title) || "Untitled",
+      description: capitalizeFirst(data.description),
       githubUrl: data.githubUrl?.trim() || null,
       demoUrl: data.demoUrl?.trim() || null,
       imageUrl: data.imageUrl?.trim() || null,
