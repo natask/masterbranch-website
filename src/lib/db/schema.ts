@@ -107,6 +107,8 @@ export const projectVotes = pgTable(
 );
 
 // ── Project Collaborators ──
+export const collaboratorRoleEnum = pgEnum("collaborator_role", ["editor", "admin"]);
+
 export const projectCollaborators = pgTable(
   "project_collaborators",
   {
@@ -116,6 +118,7 @@ export const projectCollaborators = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    role: collaboratorRoleEnum("role").default("editor").notNull(),
     addedAt: timestamp("added_at").defaultNow().notNull(),
   },
   (t) => [unique().on(t.projectId, t.userId)]

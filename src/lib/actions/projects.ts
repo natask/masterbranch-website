@@ -1,12 +1,27 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { projects, traces, projectBranches, projectVotes } from "@/lib/db/schema";
+import { projects, traces, projectBranches, projectVotes, projectCollaborators } from "@/lib/db/schema";
 import { getSession, requireSession } from "@/lib/auth-server";
 import { eq, ilike, or, and, count, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { capitalizeFirst } from "./capitalize";
+
+async function canEditProject(projectId: string, userId: string): Promise<boolean> {
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.id, projectId),
+  });
+  if (!project) return false;
+  if (project.createdBy === userId) return true;
+  const collab = await db.query.projectCollaborators.findFirst({
+    where: and(
+      eq(projectCollaborators.projectId, projectId),
+      eq(projectCollaborators.userId, userId)
+    ),
+  });
+  return !!collab;
+}
 
 export async function createProject(formData: FormData) {
   const session = await requireSession();
@@ -46,12 +61,8 @@ export async function updateProject(id: string, formData: FormData) {
     throw new Error("Title is required");
   }
 
-  // Only creator can edit (for now)
-  const existing = await db.query.projects.findFirst({
-    where: eq(projects.id, id),
-  });
-
-  if (!existing || existing.createdBy !== session.user.id) {
+  // Creator or any collaborator can edit
+  if (!(await canEditProject(id, session.user.id))) {
     throw new Error("Not authorized to edit this project");
   }
 

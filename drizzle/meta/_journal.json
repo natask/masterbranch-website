@@ -15,6 +15,13 @@
       "when": 1774535232117,
       "tag": "0001_funny_venom",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774535396044,
+      "tag": "0002_glorious_dreaming_celestial",
+      "breakpoints": true
     }
   ]
 }
