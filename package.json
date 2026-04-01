@@ -9,6 +9,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "build:cf": "opennextjs-cloudflare build",
+    "deploy:landing": "git checkout landing && pnpm run build:cf && wrangler deploy --env landing",
+    "deploy:full": "git checkout full-featured && pnpm run build:cf && wrangler deploy --env full",
+    "deploy:canary": "git checkout canary && pnpm run build:cf && wrangler deploy --env canary",
     "postinstall": "node scripts/stub-vercel-og.js"
   },
   "dependencies": {
