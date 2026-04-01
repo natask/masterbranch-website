@@ -24,11 +24,8 @@
       "routes": []
     },
     "prod": {
-      "name": "masterbranch",
-      "routes": [
-        { "pattern": "masterbranch.club/*", "zone_name": "masterbranch.club" },
-        { "pattern": "www.masterbranch.club/*", "zone_name": "masterbranch.club" }
-      ]
+      "name": "masterbranch-full-featured",
+      "routes": []
     }
   }
 }
