@@ -128,7 +128,17 @@
     scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
   }
   html {
-    font-size: 28px;
+    font-size: 18px;
+  }
+  @media (min-width: 640px) {
+    html {
+      font-size: 22px;
+    }
+  }
+  @media (min-width: 1024px) {
+    html {
+      font-size: 28px;
+    }
   }
   body {
     @apply bg-background text-foreground;
@@ -277,10 +287,21 @@
   to { transform: rotate(360deg); }
 }
 
-/* ---- Pill button — golden, hover shimmer ---- */
-@keyframes shimmerSlide {
-  from { transform: translateX(-100%); }
-  to   { transform: translateX(200%); }
+/* ---- Pill button — golden shimmer ---- */
+/* Sweep occupies 0%–30% of the cycle (~0.9s), then stays off-screen for the
+   remaining 70% (~2.1s). Total cycle = 3s, giving a sweep every 3 seconds. */
+/* 2s cycle: sweep takes 0.6s (30% of 2s), pause fills the rest */
+@keyframes shimmerPulse {
+  0%   { transform: translateX(-100%); }
+  30%  { transform: translateX(200%); }
+  100% { transform: translateX(200%); }
+}
+
+/* 1s cycle: sweep still takes 0.6s (60% of 1s), shorter pause */
+@keyframes shimmerPulseFast {
+  0%   { transform: translateX(-100%); }
+  60%  { transform: translateX(200%); }
+  100% { transform: translateX(200%); }
 }
 
 .shimmer-pill {
@@ -292,7 +313,7 @@
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
 
-/* left-to-right shimmer on hover — uses ::before so ::after is free for border-beam */
+/* Shimmer sweep overlay — 2s cycle, speeds up to 1s on hover */
 .shimmer-pill::before {
   content: "";
   position: absolute;
@@ -306,15 +327,13 @@
     rgba(255, 255, 255, 0.15) 60%,
     transparent 80%
   );
-  transform: translateX(-100%);
   pointer-events: none;
-  opacity: 0;
   z-index: 2;
+  animation: shimmerPulse 2s ease infinite;
 }
 
 .shimmer-pill:hover::before {
-  opacity: 1;
-  animation: shimmerSlide 1.2s ease forwards;
+  animation: shimmerPulseFast 1s ease infinite;
 }
 
 /* ---- Page-level flashlight background ---- */
@@ -329,11 +348,13 @@
   pointer-events: none;
   z-index: 0;
   background: radial-gradient(
-    600px circle at var(--fl-x, -600px) var(--fl-y, -600px),
-    rgba(201, 165, 92, 0.04) 0%,
+    700px circle at var(--fl-x, -900px) var(--fl-y, -900px),
+    rgba(255, 245, 220, 0.12) 0%,
+    rgba(201, 165, 92, 0.08) 30%,
+    rgba(201, 165, 92, 0.03) 55%,
     transparent 70%
   );
-  transition: background 0.05s linear;
+  mix-blend-mode: screen;
 }
 
 /* ---- Project card — Delphi-style tilt + physical light ---- */

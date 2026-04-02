@@ -5,9 +5,9 @@ import {
   JetBrains_Mono,
 } from "next/font/google";
 import "./globals.css";
-import { Footer } from "@/components/footer";
 import { QueryProvider } from "@/components/query-provider";
 import { FontConfigurator } from "@/components/font-configurator";
+import { LayoutShell } from "@/components/layout-shell";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -43,11 +43,8 @@ export default function RootLayout({
         className={`${cormorant.variable} ${cinzel.variable} ${jetbrainsMono.variable} appear-1 antialiased flex min-h-screen flex-col`}
       >
         <QueryProvider>
-          <main className="flex-1">
-            {children}
-          </main>
+          <LayoutShell>{children}</LayoutShell>
         </QueryProvider>
-        <Footer />
         <FontConfigurator />
       </body>
     </html>
