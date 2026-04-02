@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Nav } from "@/components/nav";
-import { FlashlightBackground } from "@/components/flashlight-card";
 import { HeroSection } from "@/components/hero-section";
 import { ProjectGrid, type Project } from "@/components/project-grid";
 import { UploadModal, type DraftSnapshot } from "@/components/upload-modal";
@@ -46,13 +45,13 @@ export function HomeClient({ initialProjects }: { initialProjects: Project[] }) 
   }
 
   return (
-    <FlashlightBackground className="min-h-screen">
+    <div className="min-h-screen">
       <Nav />
       <HeroSection onUpload={() => setShowUpload(true)} />
       {showUpload && (
         <UploadModal onClose={handleModalClose} initialDraft={pendingDraft} />
       )}
       <ProjectGrid initialProjects={initialProjects} />
-    </FlashlightBackground>
+    </div>
   );
 }
