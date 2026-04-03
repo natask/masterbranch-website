@@ -10,10 +10,7 @@
   "r2_buckets": [
     { "binding": "IMAGES_BUCKET", "bucket_name": "masterbranch-images", "remote": true }
   ],
-  "routes": [
-    { "pattern": "masterbranch.club/*", "zone_name": "masterbranch.club" },
-    { "pattern": "www.masterbranch.club/*", "zone_name": "masterbranch.club" }
-  ],
+  "routes": [],
   "env": {
     "dev": {
       "name": "masterbranch-dev",
@@ -22,6 +19,18 @@
     "canary": {
       "name": "masterbranch-canary",
       "routes": []
+    },
+    "landing": {
+      "name": "masterbranch",
+      "routes": [
+        { "pattern": "masterbranch.club/*", "zone_name": "masterbranch.club" },
+        { "pattern": "www.masterbranch.club/*", "zone_name": "masterbranch.club" },
+        { "pattern": "masterbranch.ai/*", "zone_name": "masterbranch.ai" },
+        { "pattern": "www.masterbranch.ai/*", "zone_name": "masterbranch.ai" }
+      ],
+      "r2_buckets": [
+        { "binding": "IMAGES_BUCKET", "bucket_name": "masterbranch-images", "remote": true }
+      ]
     },
     "prod": {
       "name": "masterbranch-full-featured",
