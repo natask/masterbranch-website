@@ -8,17 +8,17 @@ const GLIDE_MS = 300;
  *  Tier 1 — Android touch-hover: pointermove fires before pointerdown.
  *           Detected at runtime on first qualifying event.
  *  Tier 2 — Gyroscope: DeviceOrientationEvent maps tilt → light position.
- *           Used on touch devices without hover (most Android + all iOS).
- *  Tier 3 — Touch-on-contact: touchstart/touchmove/touchend.
- *           Intensifies light at contact point, overrides gyro while held.
+ *           Primary mobile tier. Permission requested on first touch.
  *  Tier 0 — Desktop mouse: existing behavior, unchanged.
+ *
+ *  No touch-on-contact tier — the flashlight should never appear on tap.
  * ──────────────────────────────────────────────────────────────────── */
 
-type InputTier = "unknown" | "mouse" | "touch-hover" | "touch-gyro" | "touch-only";
+type InputTier = "unknown" | "mouse" | "touch-hover" | "touch-gyro" | "touch-none";
 
-// Shared across all FlashlightBackground instances on the page
 let detectedTier: InputTier = "unknown";
 let gyroPermissionState: "pending" | "granted" | "denied" | "unavailable" = "pending";
+let gyroPermissionRequested = false;
 
 function isTouchDevice(): boolean {
   return "ontouchstart" in window || navigator.maxTouchPoints > 0;
@@ -28,10 +28,11 @@ async function requestGyroPermission(): Promise<boolean> {
   if (gyroPermissionState === "granted") return true;
   if (gyroPermissionState === "denied" || gyroPermissionState === "unavailable") return false;
 
-  // iOS 13+ requires explicit permission
   const DOE = DeviceOrientationEvent as unknown as {
     requestPermission?: () => Promise<"granted" | "denied">;
   };
+
+  // iOS 13+ requires explicit permission (must be triggered by user gesture)
   if (typeof DOE.requestPermission === "function") {
     try {
       const state = await DOE.requestPermission();
@@ -43,7 +44,7 @@ async function requestGyroPermission(): Promise<boolean> {
     }
   }
 
-  // Android / non-iOS — check if events actually fire
+  // Android — check if events actually fire
   return new Promise((resolve) => {
     let resolved = false;
     const timeout = setTimeout(() => {
@@ -52,7 +53,7 @@ async function requestGyroPermission(): Promise<boolean> {
       gyroPermissionState = "unavailable";
       window.removeEventListener("deviceorientation", probe);
       resolve(false);
-    }, 1000);
+    }, 800);
 
     function probe() {
       if (resolved) return;
@@ -66,12 +67,6 @@ async function requestGyroPermission(): Promise<boolean> {
   });
 }
 
-/** Wraps the full page and paints a subtle flashlight on the background.
- *
- *  Desktop: tracks cursor directly (glide animation on re-entry).
- *  Touch-hover (Android): tracks finger proximity before contact.
- *  Gyroscope: maps phone tilt to light position (ambient drift).
- *  Touch-on-contact: intensifies + overrides position while finger is down. */
 export function FlashlightBackground({
   children,
   className = "",
@@ -86,14 +81,13 @@ export function FlashlightBackground({
   const glideT0 = useRef(0);
   const rafId = useRef<number>(0);
 
-  // Touch state
-  const touchActive = useRef(false);
+  // Touch-hover detection
   const touchHoverDetected = useRef(false);
   const pointerDownActive = useRef(false);
 
   // Gyro state
-  const gyroActive = useRef(false);
   const gyroBase = useRef<{ beta: number; gamma: number } | null>(null);
+  const gyroCleanup = useRef<(() => void) | null>(null);
 
   const set = useCallback((x: number, y: number) => {
     const el = ref.current;
@@ -104,15 +98,59 @@ export function FlashlightBackground({
     el.style.setProperty("--fl-y", `${y}px`);
   }, []);
 
-  // ─── Intensity control (touch brightens the flashlight) ───
   const setIntensity = useCallback((level: "ambient" | "full") => {
     const el = ref.current;
     if (!el) return;
-    el.style.setProperty(
-      "--fl-intensity",
-      level === "full" ? "1" : "0.45",
-    );
+    el.style.setProperty("--fl-intensity", level === "full" ? "1" : "0.45");
   }, []);
+
+  // ─── Gyro binding ───
+  const bindGyro = useCallback(() => {
+    if (gyroCleanup.current) return; // already bound
+
+    const handler = (e: DeviceOrientationEvent) => {
+      const beta = e.beta ?? 0;
+      const gamma = e.gamma ?? 0;
+
+      if (!gyroBase.current) {
+        gyroBase.current = { beta, gamma };
+      }
+
+      const db = beta - gyroBase.current.beta;
+      const dg = gamma - gyroBase.current.gamma;
+
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const x = vw / 2 + (dg / 30) * (vw / 2);
+      const y = vh / 2 + (db / 30) * (vh / 2);
+
+      set(Math.max(0, Math.min(vw, x)), Math.max(0, Math.min(vh, y)));
+    };
+
+    window.addEventListener("deviceorientation", handler);
+    gyroCleanup.current = () => {
+      window.removeEventListener("deviceorientation", handler);
+      gyroCleanup.current = null;
+    };
+  }, [set]);
+
+  // ─── Try to activate gyro (called on first touch interaction) ───
+  const tryActivateGyro = useCallback(async () => {
+    if (gyroPermissionRequested) return;
+    gyroPermissionRequested = true;
+
+    const hasGyro = await requestGyroPermission();
+    if (touchHoverDetected.current) return; // Tier 1 won during probe
+
+    if (hasGyro) {
+      detectedTier = "touch-gyro";
+      setIntensity("ambient");
+      bindGyro();
+    } else {
+      detectedTier = "touch-none";
+      // No flashlight on mobile without gyro or hover — intentional
+    }
+  }, [setIntensity, bindGyro]);
 
   // ─── Desktop: glide animation on re-entry ───
   const endGlide = useCallback(() => {
@@ -142,7 +180,7 @@ export function FlashlightBackground({
     [set, endGlide],
   );
 
-  // ─── Tier 0: Desktop mouse handlers ───
+  // ─── Tier 0: Desktop mouse ───
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (detectedTier !== "unknown" && detectedTier !== "mouse") return;
@@ -187,7 +225,6 @@ export function FlashlightBackground({
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.pointerType !== "touch") return;
 
-      // If pointer is moving but no finger is down → hover-capable panel
       if (!pointerDownActive.current) {
         if (!touchHoverDetected.current) {
           touchHoverDetected.current = true;
@@ -195,13 +232,6 @@ export function FlashlightBackground({
         }
         set(e.clientX, e.clientY);
         setIntensity("ambient");
-        return;
-      }
-
-      // Finger is down — direct tracking, full intensity
-      if (detectedTier === "touch-hover") {
-        set(e.clientX, e.clientY);
-        setIntensity("full");
       }
     },
     [set, setIntensity],
@@ -211,129 +241,61 @@ export function FlashlightBackground({
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.pointerType !== "touch") return;
       pointerDownActive.current = true;
-      if (detectedTier === "touch-hover" || detectedTier === "touch-gyro" || detectedTier === "touch-only") {
-        set(e.clientX, e.clientY);
-        setIntensity("full");
-        touchActive.current = true;
+
+      // First touch interaction on a touch device — request gyro permission
+      // iOS requires this to happen inside a user gesture handler
+      if (detectedTier === "unknown") {
+        tryActivateGyro();
       }
     },
-    [set, setIntensity],
+    [tryActivateGyro],
   );
 
   const handlePointerUp = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.pointerType !== "touch") return;
       pointerDownActive.current = false;
-      touchActive.current = false;
-      if (detectedTier === "touch-hover") {
-        setIntensity("ambient");
-      } else if (detectedTier === "touch-gyro") {
-        setIntensity("ambient");
-        // Position returns to gyro control — no action needed
-      } else if (detectedTier === "touch-only") {
-        setIntensity("ambient");
-      }
     },
-    [setIntensity],
+    [],
   );
 
-  // ─── Tier 3: Touch-on-contact (touchmove for position while held) ───
-  const handleTouchMove = useCallback(
-    (e: React.TouchEvent<HTMLDivElement>) => {
-      if (detectedTier !== "touch-gyro" && detectedTier !== "touch-only") return;
-      if (!touchActive.current) return;
-      const t = e.touches[0];
-      if (!t) return;
-      set(t.clientX, t.clientY);
-    },
-    [set],
-  );
-
-  const handleTouchStart = useCallback(
-    (e: React.TouchEvent<HTMLDivElement>) => {
-      if (detectedTier !== "touch-gyro" && detectedTier !== "touch-only") return;
-      touchActive.current = true;
-      const t = e.touches[0];
-      if (!t) return;
-      set(t.clientX, t.clientY);
-      setIntensity("full");
-    },
-    [set, setIntensity],
-  );
-
-  const handleTouchEnd = useCallback(() => {
-    touchActive.current = false;
-    if (detectedTier === "touch-gyro") {
-      setIntensity("ambient");
-    } else if (detectedTier === "touch-only") {
-      setIntensity("ambient");
-    }
-  }, [setIntensity]);
-
-  // ─── Tier 2: Gyroscope setup ───
+  // ─── Auto-detect on mount (Android gyro doesn't need user gesture) ───
   useEffect(() => {
     if (!isTouchDevice()) {
       detectedTier = "mouse";
       return;
     }
 
-    let gyroHandler: ((e: DeviceOrientationEvent) => void) | null = null;
-
-    // Wait briefly to see if touch-hover fires first
+    // Wait briefly to see if touch-hover fires
     const timer = setTimeout(async () => {
-      if (touchHoverDetected.current) return; // Tier 1 won, skip gyro
+      if (touchHoverDetected.current) return;
 
-      const hasGyro = await requestGyroPermission();
-      if (touchHoverDetected.current) return; // Tier 1 detected during gyro probe
+      // On Android, we can probe gyro without a gesture
+      const DOE = DeviceOrientationEvent as unknown as {
+        requestPermission?: () => Promise<string>;
+      };
+      const needsGesture = typeof DOE.requestPermission === "function";
 
-      if (hasGyro) {
-        detectedTier = "touch-gyro";
-        gyroActive.current = true;
-        setIntensity("ambient");
-
-        gyroHandler = (e: DeviceOrientationEvent) => {
-          if (touchActive.current) return; // Finger overrides gyro
-          const beta = e.beta ?? 0;   // front-back tilt
-          const gamma = e.gamma ?? 0; // left-right tilt
-
-          // Calibrate: first reading becomes center
-          if (!gyroBase.current) {
-            gyroBase.current = { beta, gamma };
-          }
-
-          const db = beta - gyroBase.current.beta;
-          const dg = gamma - gyroBase.current.gamma;
-
-          // Map tilt degrees to viewport pixels
-          // ±30° maps to full viewport width/height
-          const vw = window.innerWidth;
-          const vh = window.innerHeight;
-          const x = vw / 2 + (dg / 30) * (vw / 2);
-          const y = vh / 2 + (db / 30) * (vh / 2);
-
-          set(
-            Math.max(0, Math.min(vw, x)),
-            Math.max(0, Math.min(vh, y)),
-          );
-        };
-
-        window.addEventListener("deviceorientation", gyroHandler);
-      } else {
-        detectedTier = "touch-only";
-        setIntensity("ambient");
+      if (!needsGesture && !gyroPermissionRequested) {
+        const hasGyro = await requestGyroPermission();
+        if (touchHoverDetected.current) return;
+        if (hasGyro) {
+          detectedTier = "touch-gyro";
+          gyroPermissionRequested = true;
+          setIntensity("ambient");
+          bindGyro();
+        }
+        // If no gyro and no hover, tier stays unknown until first touch
+        // triggers iOS permission request
       }
     }, 300);
 
     return () => {
       clearTimeout(timer);
-      if (gyroHandler) {
-        window.removeEventListener("deviceorientation", gyroHandler);
-      }
-      gyroActive.current = false;
+      gyroCleanup.current?.();
     };
-  }, [set, setIntensity]);
+  }, [setIntensity, bindGyro]);
 
-  // Cleanup rAF on unmount
   useEffect(() => () => cancelAnimationFrame(rafId.current), []);
 
   return (
@@ -345,9 +307,6 @@ export function FlashlightBackground({
       onPointerMove={handlePointerMove}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
       className={`flashlight-bg ${className}`}
     >
       {children}
