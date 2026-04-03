@@ -327,8 +327,9 @@ body {
 
 /* --- VIEWPORT --- */
 .canvas-viewport {
-  flex: 1; overflow: hidden;
-  display: flex; align-items: center; justify-content: center;
+  flex: 1; overflow: auto;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 1rem;
   background:
     radial-gradient(circle at 50% 50%, rgba(56,189,248,0.015) 0%, transparent 70%),
     repeating-linear-gradient(0deg, transparent, transparent 19px, rgba(255,255,255,0.012) 19px, rgba(255,255,255,0.012) 20px),
@@ -336,6 +337,8 @@ body {
     var(--bg);
   position: relative;
 }
+.canvas-viewport::-webkit-scrollbar { width: 8px; height: 8px; }
+.canvas-viewport::-webkit-scrollbar-thumb { background: var(--border-active); border-radius: 999px; }
 
 .viewport-empty {
   color: var(--text-faint);
@@ -533,6 +536,11 @@ let activeFilter = "fail";
 let selectedIdx = null;
 let deviceIdx = 0;
 let fontsLoaded = false;
+let frameEl = null;
+let overlayEl = null;
+let currentFramePage = null;
+let currentCheckKey = null;
+const pageScrollPositions = new Map();
 
 // --- Device input type classification ---
 // Touch: mobile + tablet viewports. Mouse: desktop viewports.
@@ -548,7 +556,6 @@ function setupTouchOverlay(overlayEl, frameEl, scale) {
   let pressed = false;
   let dragStart = null;
   let scrollStart = null;
-  let activeTouch = null; // track the simulated touch point
 
   // --- Visual cursor (finger dot) tracking ---
   // This only drives the visual indicator — NO events are forwarded on hover.
@@ -613,9 +620,15 @@ function setupTouchOverlay(overlayEl, frameEl, scale) {
   // Drop pointer-events on overlay so the wheel event falls through to the
   // iframe natively. Re-enable on next frame. This is the only reliable way
   // to scroll a (potentially cross-origin) iframe from an overlay.
-  overlayEl.addEventListener("wheel", () => {
-    overlayEl.style.pointerEvents = "none";
-    requestAnimationFrame(() => { overlayEl.style.pointerEvents = ""; });
+  overlayEl.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    try {
+      frameEl.contentWindow.scrollBy({
+        left: e.deltaX / scale,
+        top: e.deltaY / scale,
+        behavior: "instant",
+      });
+    } catch {}
   });
 }
 
@@ -660,6 +673,126 @@ const deviceLabelEl = document.getElementById("deviceLabel");
 const prevBtn = document.getElementById("prevDevice");
 const nextBtn = document.getElementById("nextDevice");
 const runBtn = document.getElementById("runBtn");
+
+function selectionKey(check) {
+  return check.page + "::" + check.label + "::" + check.text;
+}
+
+function normalizeText(value) {
+  return (value || "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function saveCurrentScrollPosition() {
+  if (!frameEl || !currentFramePage) return;
+  try {
+    pageScrollPositions.set(currentFramePage, {
+      x: frameEl.contentWindow.scrollX,
+      y: frameEl.contentWindow.scrollY,
+    });
+  } catch {}
+}
+
+function restoreScrollPosition(page) {
+  if (!frameEl) return false;
+  const saved = pageScrollPositions.get(page);
+  if (!saved) return false;
+  try {
+    frameEl.contentWindow.scrollTo(saved.x, saved.y);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function findBestMatchElement(doc, targetText) {
+  const wanted = normalizeText(targetText);
+  if (!wanted) return null;
+
+  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT);
+  let partial = null;
+
+  while (walker.nextNode()) {
+    const el = walker.currentNode;
+    if (!(el instanceof HTMLElement)) continue;
+    const text = normalizeText(el.innerText || el.textContent || "");
+    if (!text) continue;
+    if (text === wanted) return el;
+    if (!partial && text.includes(wanted)) partial = el;
+  }
+
+  return partial;
+}
+
+function scrollCheckIntoView(check) {
+  if (!frameEl) return false;
+  try {
+    const doc = frameEl.contentDocument;
+    if (!doc?.body) return false;
+    const match = findBestMatchElement(doc, check.text);
+    if (!match) return false;
+    const top = Math.max(0, match.getBoundingClientRect().top + frameEl.contentWindow.scrollY - 120);
+    frameEl.contentWindow.scrollTo({ top, behavior: "instant" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function syncSelectedCard() {
+  cardsEl.querySelectorAll(".card").forEach(card => {
+    const isSelected = parseInt(card.dataset.idx) === selectedIdx;
+    card.classList.toggle("selected", isSelected);
+    if (isSelected) {
+      card.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+  });
+}
+
+function ensureViewportFrame() {
+  if (frameEl && overlayEl) return;
+
+  viewportEl.innerHTML =
+    '<div class="viewport-frame">' +
+      '<iframe loading="lazy"></iframe>' +
+      '<div class="mouse-overlay"></div>' +
+    '</div>';
+
+  frameEl = viewportEl.querySelector("iframe");
+  overlayEl = viewportEl.querySelector(".viewport-frame > div");
+}
+
+function updateViewportFrame(check, dev) {
+  ensureViewportFrame();
+
+  const vpRect = viewportEl.getBoundingClientRect();
+  const maxW = Math.max(320, vpRect.width - 32);
+  const maxH = Math.max(480, vpRect.height - 32);
+  const scale = Math.min(1, maxW / dev.width, maxH / 900);
+  const scaledW = Math.round(dev.width * scale);
+  const scaledH = Math.round(900 * scale);
+  const devInputType = inputTypeForWidth(dev.width);
+
+  const frameWrap = viewportEl.querySelector(".viewport-frame");
+  frameWrap.style.width = scaledW + "px";
+  frameWrap.style.height = scaledH + "px";
+
+  frameEl.style.width = dev.width + "px";
+  frameEl.style.height = "900px";
+  frameEl.style.transform = "scale(" + scale + ")";
+
+  const nextOverlay = document.createElement("div");
+  nextOverlay.className = devInputType === "touch" ? "touch-overlay" : "mouse-overlay";
+  overlayEl.replaceWith(nextOverlay);
+  overlayEl = nextOverlay;
+
+  if (devInputType === "touch") {
+    setupTouchOverlay(overlayEl, frameEl, scale);
+  } else {
+    touchCursorEl.classList.remove("visible");
+  }
+
+  return { devInputType };
+}
 
 // --- Load fonts + Google Fonts link on first config fetch ---
 async function ensureFonts(config) {
@@ -819,12 +952,15 @@ function render() {
     card.addEventListener("click", () => {
       selectedIdx = parseInt(card.dataset.idx);
       deviceIdx = 0;
-      render();
+      syncSelectedCard();
       renderDetail();
     });
   });
 
-  if (selectedIdx !== null) renderDetail();
+  if (selectedIdx !== null) {
+    syncSelectedCard();
+    renderDetail();
+  }
   else {
     viewportEl.innerHTML = '<div class="viewport-empty">Select a check to see<br/>how it renders on each device</div>';
     deviceBarEl.innerHTML = "";
@@ -840,7 +976,9 @@ function renderDetail() {
   const check = list[selectedIdx];
   if (!check) return;
 
+  syncSelectedCard();
   titleEl.textContent = check.label;
+  const nextSelectionKey = selectionKey(check);
 
   const dev = check.devices[deviceIdx];
   prevBtn.disabled = deviceIdx === 0;
@@ -850,31 +988,23 @@ function renderDetail() {
     '<span class="device-type-badge ' + devInputType + '">' +
     (devInputType === "touch" ? "Touch" : "Mouse") + '</span>';
 
-  // Compute scale to fit viewport panel
-  const vpRect = viewportEl.getBoundingClientRect();
-  const maxW = vpRect.width - 32;
-  const maxH = vpRect.height - 32;
-  const scale = Math.min(1, maxW / dev.width, maxH / 900);
-  const scaledW = Math.round(dev.width * scale);
-  const scaledH = Math.round(900 * scale);
+  updateViewportFrame(check, dev);
 
-  const overlayClass = devInputType === "touch" ? "touch-overlay" : "mouse-overlay";
-  viewportEl.innerHTML =
-    '<div class="viewport-frame" style="width:' + scaledW + 'px;height:' + scaledH + 'px;">' +
-      '<iframe src="' + TARGET + check.page + '" ' +
-        'style="width:' + dev.width + 'px;height:900px;transform:scale(' + scale + ');" ' +
-        'loading="lazy"></iframe>' +
-      '<div class="' + overlayClass + '"></div>' +
-    '</div>';
+  const pageChanged = currentFramePage !== check.page;
+  const checkChanged = currentCheckKey !== nextSelectionKey;
 
-  // Wire up touch simulation for touch-type devices
-  if (devInputType === "touch") {
-    const overlay = viewportEl.querySelector(".touch-overlay");
-    const iframe = viewportEl.querySelector("iframe");
-    setupTouchOverlay(overlay, iframe, scale);
-  } else {
-    // Mouse device — hide touch cursor if it was visible
-    touchCursorEl.classList.remove("visible");
+  if (pageChanged) {
+    saveCurrentScrollPosition();
+    currentFramePage = check.page;
+    currentCheckKey = nextSelectionKey;
+    frameEl.onload = () => {
+      const restored = restoreScrollPosition(check.page);
+      if (!restored || checkChanged) scrollCheckIntoView(check);
+    };
+    frameEl.src = TARGET + check.page;
+  } else if (checkChanged) {
+    currentCheckKey = nextSelectionKey;
+    if (!scrollCheckIntoView(check)) restoreScrollPosition(check.page);
   }
 
   // Device bar
@@ -907,11 +1037,11 @@ document.addEventListener("keydown", (e) => {
   } else if (e.key === "ArrowUp") {
     e.preventDefault();
     if (selectedIdx === null) { selectedIdx = 0; } else if (selectedIdx > 0) { selectedIdx--; }
-    deviceIdx = 0; render(); renderDetail();
+    deviceIdx = 0; syncSelectedCard(); renderDetail();
   } else if (e.key === "ArrowDown") {
     e.preventDefault();
     if (selectedIdx === null) { selectedIdx = 0; } else if (selectedIdx < list.length - 1) { selectedIdx++; }
-    deviceIdx = 0; render(); renderDetail();
+    deviceIdx = 0; syncSelectedCard(); renderDetail();
   } else if (e.key === "Escape") {
     selectedIdx = null; deviceIdx = 0; render();
   }
