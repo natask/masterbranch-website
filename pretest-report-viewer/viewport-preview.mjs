@@ -2,23 +2,17 @@
 /**
  * viewport-preview.mjs
  *
- * Test results viewer. Shows failures as cards, drill into each failure to see
- * how it renders across all devices. Touch-friendly, left/right navigation.
+ * Test results viewer. Fetches results from pretext-check, shows failures
+ * as cards with device preview canvas. Can trigger re-measurement.
  *
  * Usage:
- *   node viewport-preview.mjs                    # serve on :4445
- *   node viewport-preview.mjs --check-runner=localhost:4444  # custom results server
- *   node viewport-preview.mjs --target=localhost:3000        # custom app target
+ *   node viewport-preview.mjs                              # serve on :4445
+ *   node viewport-preview.mjs --check-runner=localhost:4444 # custom runner
+ *   node viewport-preview.mjs --target=localhost:3000       # custom app target
  */
 
 import { createServer } from "http";
-import { readFileSync } from "fs";
 import { execSync } from "child_process";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const CONFIG_PATH = resolve(__dirname, "pretext-check-config.json");
 
 const args = Object.fromEntries(
   process.argv.slice(2).filter(a => a.startsWith("--")).map(a => {
@@ -30,617 +24,400 @@ const args = Object.fromEntries(
 const TARGET = args.target || "http://localhost:3000";
 const PORT = parseInt(args.port || "4445");
 const RUNNER = args["check-runner"] || "localhost:4444";
-const config = JSON.parse(readFileSync(CONFIG_PATH, "utf-8"));
 
 const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Test Failure Viewer</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-  \${CONFIG.googleFontsUrl ? '<link href="' + CONFIG.googleFontsUrl + '" rel="stylesheet"/>' : ''}
-  <style>
-    :root {
-      --bg: #09090b;
-      --surface: #111113;
-      --surface-alt: #0f0f12;
-      --border: #1e1e22;
-      --border-subtle: #16161c;
-      --text: #e4e4e7;
-      --text-secondary: #a1a1aa;
-      --text-muted: #71717a;
-      --pass: #4ade80;
-      --pass-bg: #052e16;
-      --warn: #facc15;
-      --warn-bg: #422006;
-      --fail: #f87171;
-      --fail-bg: #450a0a;
-      --gold: #c9a84c;
-    }
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Viewport Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #09090b;
+  --surface: #111113;
+  --surface-raised: #161619;
+  --border: #1e1e22;
+  --border-subtle: #16161c;
+  --text: #e4e4e7;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --text-faint: #3f3f50;
+  --pass: #4ade80;
+  --warn: #facc15;
+  --fail: #f87171;
+  --gold: #c9a84c;
+  --gold-dim: rgba(201,168,76,0.15);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; font-family: "Inter", system-ui, sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+body { display: flex; flex-direction: column; overflow: hidden; }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+/* TOPBAR */
+.topbar {
+  position: sticky; top: 0; z-index: 200;
+  background: rgba(9,9,11,0.92); backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem 1.25rem;
+  display: flex; align-items: center; gap: 1rem;
+  min-height: 44px;
+}
+.topbar h1 { font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+.topbar-right { display: flex; align-items: center; gap: 0.75rem; margin-left: auto; }
+.counts { display: flex; gap: 0.5rem; font-size: 0.6875rem; }
+.counts span { display: flex; align-items: center; gap: 0.25rem; }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.dot.fail { background: var(--fail); } .dot.warn { background: var(--warn); } .dot.pass { background: var(--pass); }
+.btn {
+  padding: 0.3rem 0.65rem; font-size: 0.625rem; font-weight: 500;
+  border: 1px solid var(--border-subtle); background: var(--surface);
+  color: var(--text-secondary); border-radius: 5px; cursor: pointer;
+  transition: all 0.12s; white-space: nowrap; font-family: inherit;
+}
+.btn:hover { border-color: var(--border); color: var(--text); }
+.btn.running { color: var(--gold); border-color: var(--gold); opacity: 0.7; pointer-events: none; }
 
-    html, body {
-      height: 100%;
-      font-family: "Inter", system-ui, -apple-system, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      -webkit-font-smoothing: antialiased;
-    }
+/* FILTER TABS */
+.filters {
+  display: flex; gap: 1px; padding: 0.375rem 1.25rem;
+  background: var(--surface); border-bottom: 1px solid var(--border-subtle);
+}
+.filters button {
+  font-family: inherit; font-size: 0.625rem; font-weight: 500;
+  padding: 0.25rem 0.5rem; border-radius: 4px; border: none;
+  background: none; color: var(--text-faint); cursor: pointer; transition: all 0.12s;
+}
+.filters button:hover { color: var(--text-secondary); }
+.filters button.on { color: var(--gold); background: var(--gold-dim); }
 
-    body { display: flex; flex-direction: column; overflow: hidden; }
+/* LAYOUT */
+.main { display: flex; flex: 1; overflow: hidden; }
 
-    /* --- TOPBAR --- */
-    .topbar {
-      position: sticky;
-      top: 0;
-      z-index: 200;
-      background: rgba(9, 9, 11, 0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-      padding: 0.6rem 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      min-height: 48px;
-      flex-wrap: wrap;
-    }
+/* CARDS PANEL */
+.cards-panel {
+  width: 260px; min-width: 220px;
+  border-right: 1px solid var(--border);
+  overflow-y: auto; background: var(--surface);
+  display: flex; flex-direction: column;
+}
+.cards-panel::-webkit-scrollbar { width: 5px; }
+.cards-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.card {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer; transition: all 0.1s;
+  display: flex; align-items: flex-start; gap: 0.5rem;
+}
+.card:hover { background: rgba(255,255,255,0.015); }
+.card.selected { background: var(--gold-dim); }
+.card-badge {
+  font-size: 0.5rem; font-weight: 700; text-transform: uppercase;
+  padding: 0.1rem 0.3rem; border-radius: 3px; flex-shrink: 0; margin-top: 0.1rem;
+  letter-spacing: 0.03em;
+}
+.card-badge.fail { background: rgba(248,113,113,0.12); color: var(--fail); }
+.card-badge.warn { background: rgba(250,204,21,0.12); color: var(--warn); }
+.card-badge.pass { background: rgba(74,222,128,0.12); color: var(--pass); }
+.card-info { flex: 1; min-width: 0; }
+.card-label { font-size: 0.6875rem; font-weight: 500; color: var(--text-secondary); line-height: 1.3; }
+.card-text { font-size: 0.5625rem; color: var(--text-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 0.15rem; }
+.card-meta { font-size: 0.5rem; color: var(--text-faint); margin-top: 0.2rem; }
 
-    .topbar h1 {
-      font-size: 0.8125rem;
-      font-weight: 600;
-      white-space: nowrap;
-    }
+/* CANVAS PANEL */
+.canvas-panel { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+.canvas-header {
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 0.75rem;
+  background: var(--surface);
+  min-height: 40px;
+}
+.canvas-title { font-size: 0.75rem; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.canvas-nav { display: flex; align-items: center; gap: 0.375rem; font-size: 0.625rem; color: var(--text-muted); }
+.canvas-nav button {
+  width: 26px; height: 26px; padding: 0;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text-secondary); border-radius: 4px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.12s; font-size: 0.8125rem; font-family: inherit;
+}
+.canvas-nav button:hover { border-color: var(--border-subtle); color: var(--text); }
+.canvas-nav button:disabled { opacity: 0.25; cursor: not-allowed; }
 
-    .topbar-right {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      margin-left: auto;
-    }
+/* VIEWPORT */
+.canvas-viewport { flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #000; position: relative; }
+.viewport-empty { color: var(--text-faint); font-size: 0.75rem; text-align: center; line-height: 1.6; }
+.viewport-frame { position: relative; background: var(--bg); overflow: hidden; border-radius: 4px; box-shadow: 0 0 0 1px var(--border); }
+.viewport-frame iframe { border: none; display: block; transform-origin: top left; }
 
-    .counts {
-      display: flex;
-      gap: 0.75rem;
-      font-size: 0.75rem;
-    }
+/* DEVICE BAR */
+.device-bar {
+  display: flex; gap: 0.25rem; padding: 0.5rem 1rem;
+  border-top: 1px solid var(--border); background: var(--surface);
+  overflow-x: auto;
+}
+.device-bar::-webkit-scrollbar { height: 4px; }
+.device-bar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.device-btn {
+  padding: 0.3rem 0.5rem; font-family: inherit;
+  font-size: 0.5625rem; font-weight: 500; white-space: nowrap;
+  border: 1px solid var(--border-subtle); background: none;
+  color: var(--text-faint); border-radius: 4px; cursor: pointer;
+  transition: all 0.12s; flex-shrink: 0;
+}
+.device-btn:hover { color: var(--text-secondary); border-color: var(--border); }
+.device-btn.active { color: var(--bg); background: var(--gold); border-color: var(--gold); }
+.device-btn .status-dot {
+  display: inline-block; width: 5px; height: 5px; border-radius: 50%; margin-right: 0.25rem; vertical-align: middle;
+}
 
-    .counts span {
-      display: flex;
-      align-items: center;
-      gap: 0.3rem;
-      padding: 0.25rem 0.5rem;
-      background: var(--surface);
-      border-radius: 4px;
-      border: 1px solid var(--border-subtle);
-    }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .dot.fail { background: var(--fail); }
-    .dot.warn { background: var(--warn); }
-    .dot.pass { background: var(--pass); }
-
-    .topbar button {
-      padding: 0.4rem 0.8rem;
-      font-size: 0.6875rem;
-      font-weight: 500;
-      border: 1px solid var(--border-subtle);
-      background: var(--surface);
-      color: var(--text-secondary);
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.15s;
-      white-space: nowrap;
-    }
-
-    .topbar button:hover {
-      border-color: var(--border);
-      background: var(--surface-alt);
-      color: var(--text);
-    }
-
-    .topbar button.active {
-      background: var(--gold);
-      color: var(--bg);
-      border-color: var(--gold);
-    }
-
-    /* --- MAIN LAYOUT --- */
-    .container {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-      gap: 0;
-    }
-
-    .cards-panel {
-      display: flex;
-      flex-direction: column;
-      width: 25%;
-      min-width: 280px;
-      border-right: 1px solid var(--border);
-      overflow-y: auto;
-      background: var(--surface);
-    }
-
-    .cards-header {
-      padding: 1rem;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      sticky: top;
-    }
-
-    .cards-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      padding: 0.75rem;
-      overflow-y: auto;
-      flex: 1;
-    }
-
-    .card {
-      padding: 0.75rem;
-      background: var(--surface-alt);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.15s;
-      font-size: 0.75rem;
-    }
-
-    .card:hover {
-      border-color: var(--border-subtle);
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    .card.selected {
-      border-color: var(--gold);
-      background: rgba(201, 168, 76, 0.08);
-      box-shadow: 0 0 0 1px var(--gold);
-    }
-
-    .card-label {
-      font-weight: 500;
-      color: var(--text);
-      margin-bottom: 0.25rem;
-      line-height: 1.3;
-      word-break: break-word;
-    }
-
-    .card-status {
-      display: inline-block;
-      padding: 0.15rem 0.35rem;
-      border-radius: 3px;
-      font-size: 0.625rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-    }
-
-    .card-status.fail {
-      background: var(--fail-bg);
-      color: var(--fail);
-    }
-    .card-status.warn {
-      background: var(--warn-bg);
-      color: var(--warn);
-    }
-    .card-status.pass {
-      background: var(--pass-bg);
-      color: var(--pass);
-    }
-
-    /* --- CANVAS/DETAIL PANEL --- */
-    .canvas-panel {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      overflow: hidden;
-    }
-
-    .canvas-header {
-      padding: 1rem;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      font-size: 0.8125rem;
-      background: var(--surface-alt);
-    }
-
-    .canvas-title {
-      font-weight: 600;
-      color: var(--text);
-      flex: 1;
-    }
-
-    .canvas-nav {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.6875rem;
-      color: var(--text-muted);
-    }
-
-    .canvas-nav button {
-      width: 28px;
-      height: 28px;
-      padding: 0;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text-secondary);
-      border-radius: 4px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.15s;
-      font-size: 0.875rem;
-    }
-
-    .canvas-nav button:hover {
-      border-color: var(--border-subtle);
-      background: var(--surface-alt);
-      color: var(--text);
-    }
-
-    .canvas-nav button:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-    }
-
-    .canvas-viewport {
-      flex: 1;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #000;
-      position: relative;
-    }
-
-    .viewport-frame {
-      position: relative;
-      background: var(--bg);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-    }
-
-    .viewport-frame iframe {
-      border: none;
-      display: block;
-      width: 100%;
-      height: 100%;
-      background: var(--bg);
-      transform-origin: top center;
-    }
-
-    .viewport-empty {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 1rem;
-      color: var(--text-muted);
-      font-size: 0.875rem;
-    }
-
-    /* --- DEVICE LIST --- */
-    .device-list {
-      display: flex;
-      gap: 0.5rem;
-      padding: 1rem;
-      border-top: 1px solid var(--border);
-      overflow-x: auto;
-      background: var(--surface);
-    }
-
-    .device-btn {
-      padding: 0.5rem 0.75rem;
-      background: var(--surface-alt);
-      border: 1px solid var(--border);
-      color: var(--text-secondary);
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 0.6875rem;
-      font-weight: 500;
-      white-space: nowrap;
-      transition: all 0.15s;
-      flex-shrink: 0;
-    }
-
-    .device-btn:hover {
-      border-color: var(--border-subtle);
-      background: var(--bg);
-      color: var(--text);
-    }
-
-    .device-btn.active {
-      background: var(--gold);
-      color: var(--bg);
-      border-color: var(--gold);
-    }
-
-    /* --- RESPONSIVE --- */
-    @media (max-width: 768px) {
-      .container {
-        flex-direction: column;
-      }
-
-      .cards-panel {
-        width: 100%;
-        border-right: none;
-        border-bottom: 1px solid var(--border);
-        max-height: 300px;
-      }
-
-      .topbar {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-
-      .topbar-right {
-        width: 100%;
-        flex-wrap: wrap;
-      }
-    }
-
-    /* --- SCROLLBAR --- */
-    .cards-list::-webkit-scrollbar,
-    .device-list::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-
-    .cards-list::-webkit-scrollbar-track,
-    .device-list::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    .cards-list::-webkit-scrollbar-thumb,
-    .device-list::-webkit-scrollbar-thumb {
-      background: var(--border);
-      border-radius: 3px;
-    }
-
-    .cards-list::-webkit-scrollbar-thumb:hover,
-    .device-list::-webkit-scrollbar-thumb:hover {
-      background: var(--border-subtle);
-    }
-  </style>
+/* HIDDEN IFRAME for triggering measurement */
+#measure-frame { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+</style>
 </head>
 <body>
-  <div class="topbar">
-    <h1>Test Failure Viewer</h1>
-    <div class="topbar-right">
-      <div class="counts" id="counts"></div>
-      <button id="runBtn">Generate Report</button>
-    </div>
+
+<div class="topbar">
+  <h1>Viewport Preview</h1>
+  <div class="topbar-right">
+    <div class="counts" id="counts"></div>
+    <button class="btn" id="runBtn">Generate Report</button>
   </div>
+</div>
 
-  <div class="container">
-    <div class="cards-panel">
-      <div class="cards-header">Failures</div>
-      <div class="cards-list" id="cardsList"></div>
-    </div>
+<div class="filters" id="filters">
+  <button class="on" data-filter="fail">Fail</button>
+  <button data-filter="warn">Warn</button>
+  <button data-filter="pass">Pass</button>
+  <button data-filter="all">All</button>
+</div>
 
-    <div class="canvas-panel">
-      <div class="canvas-header">
-        <div class="canvas-title" id="canvasTitle">Select a test to view details</div>
-        <div class="canvas-nav">
-          <button id="prevBtn" disabled>←</button>
-          <span id="deviceInfo"></span>
-          <button id="nextBtn" disabled>→</button>
-        </div>
+<div class="main">
+  <div class="cards-panel" id="cardsList"></div>
+
+  <div class="canvas-panel">
+    <div class="canvas-header">
+      <div class="canvas-title" id="canvasTitle">Click a check to preview</div>
+      <div class="canvas-nav">
+        <button id="prevDevice" disabled>&larr;</button>
+        <span id="deviceLabel"></span>
+        <button id="nextDevice" disabled>&rarr;</button>
       </div>
-      <div class="canvas-viewport" id="canvasViewport">
-        <div class="viewport-empty">Select a failed test to see device previews</div>
-      </div>
-      <div class="device-list" id="deviceList"></div>
     </div>
+    <div class="canvas-viewport" id="viewport">
+      <div class="viewport-empty">Select a check to see<br/>how it renders on each device</div>
+    </div>
+    <div class="device-bar" id="deviceBar"></div>
   </div>
+</div>
 
-  <script>
-    const TARGET = "${TARGET}";
-    const RUNNER = "${RUNNER}";
-    const CONFIG = ${JSON.stringify(config)};
+<iframe id="measure-frame"></iframe>
 
-    let results = null;
-    let currentCheckIdx = null;
-    let currentDeviceIdx = 0;
+<script>
+const RUNNER = "RUNNER_URL";
+const TARGET = "TARGET_URL";
 
-    const countEl = document.getElementById("counts");
-    const cardsEl = document.getElementById("cardsList");
-    const canvasTitleEl = document.getElementById("canvasTitle");
-    const deviceInfoEl = document.getElementById("deviceInfo");
-    const canvasViewportEl = document.getElementById("canvasViewport");
-    const deviceListEl = document.getElementById("deviceList");
-    const prevBtn = document.getElementById("prevBtn");
-    const nextBtn = document.getElementById("nextBtn");
-    const runBtn = document.getElementById("runBtn");
+let data = null;
+let activeFilter = "fail";
+let selectedIdx = null;
+let deviceIdx = 0;
 
-    // Fetch and render results
-    async function loadResults() {
-      try {
-        const resp = await fetch(\`http://\${RUNNER}/api/results\`);
-        results = await resp.json();
-        render();
-      } catch (e) {
-        console.error("Failed to load results:", e);
-        countEl.innerHTML = '<span style="color: var(--fail)">Error loading results</span>';
+const countsEl = document.getElementById("counts");
+const cardsEl = document.getElementById("cardsList");
+const titleEl = document.getElementById("canvasTitle");
+const viewportEl = document.getElementById("viewport");
+const deviceBarEl = document.getElementById("deviceBar");
+const deviceLabelEl = document.getElementById("deviceLabel");
+const prevBtn = document.getElementById("prevDevice");
+const nextBtn = document.getElementById("nextDevice");
+const runBtn = document.getElementById("runBtn");
+const measureFrame = document.getElementById("measure-frame");
+
+// --- Generate Report: trigger pretext measurement ---
+runBtn.addEventListener("click", async () => {
+  runBtn.textContent = "Measuring...";
+  runBtn.classList.add("running");
+
+  // Open measurement page in hidden iframe — it runs pretext and posts results
+  measureFrame.src = "http://" + RUNNER + "/";
+
+  // Poll for fresh results
+  let attempts = 0;
+  const poll = setInterval(async () => {
+    attempts++;
+    try {
+      const resp = await fetch("http://" + RUNNER + "/api/results");
+      if (resp.ok) {
+        const newData = await resp.json();
+        if (newData && newData.summary) {
+          clearInterval(poll);
+          data = newData;
+          render();
+          runBtn.textContent = "Generate Report";
+          runBtn.classList.remove("running");
+        }
       }
+    } catch {}
+    if (attempts > 30) {
+      clearInterval(poll);
+      runBtn.textContent = "Generate Report";
+      runBtn.classList.remove("running");
     }
+  }, 500);
+});
 
-    function render() {
-      if (!results) return;
+// --- Filters ---
+document.getElementById("filters").addEventListener("click", (e) => {
+  if (!e.target.dataset.filter) return;
+  activeFilter = e.target.dataset.filter;
+  document.querySelectorAll(".filters button").forEach(b => b.classList.toggle("on", b.dataset.filter === activeFilter));
+  selectedIdx = null;
+  deviceIdx = 0;
+  render();
+});
 
-      const { summary, results: checks } = results;
-      const failures = checks.filter(c => c.worst === "FAIL");
+// --- Render ---
+function filtered() {
+  if (!data) return [];
+  if (activeFilter === "all") return data.results;
+  return data.results.filter(r => r.worst === activeFilter.toUpperCase());
+}
 
-      // Update counts
-      countEl.innerHTML = \`
-        <span><span class="dot fail"></span> \${summary.fail} fail</span>
-        <span><span class="dot warn"></span> \${summary.warn} warn</span>
-        <span><span class="dot pass"></span> \${summary.pass} pass</span>
-      \`;
+function render() {
+  if (!data) return;
+  const { summary } = data;
 
-      // Render failure cards
-      cardsEl.innerHTML = failures.map((c, i) => \`
-        <div class="card" data-idx="\${i}">
-          <div class="card-label">\${c.label}</div>
-          <div class="card-status fail">\${c.worst}</div>
-        </div>
-      \`).join("");
+  countsEl.innerHTML =
+    '<span><span class="dot fail"></span>' + summary.fail + '</span>' +
+    '<span><span class="dot warn"></span>' + summary.warn + '</span>' +
+    '<span><span class="dot pass"></span>' + summary.pass + '</span>';
 
-      // Attach card listeners
-      cardsEl.querySelectorAll(".card").forEach(card => {
-        card.addEventListener("click", () => {
-          const idx = parseInt(card.dataset.idx);
-          selectCheck(idx);
-        });
-      });
+  const list = filtered();
+  cardsEl.innerHTML = list.map((r, i) => {
+    const failDevices = r.devices.filter(d => d.status !== "PASS").length;
+    return '<div class="card' + (i === selectedIdx ? ' selected' : '') + '" data-idx="' + i + '">' +
+      '<span class="card-badge ' + r.worst.toLowerCase() + '">' + r.worst + '</span>' +
+      '<div class="card-info">' +
+        '<div class="card-label">' + r.label + '</div>' +
+        '<div class="card-text">' + r.text + '</div>' +
+        '<div class="card-meta">' + r.page + ' &middot; ' + failDevices + '/' + r.devices.length + ' devices</div>' +
+      '</div>' +
+    '</div>';
+  }).join("");
 
-      // Auto-select first failure
-      if (failures.length > 0) {
-        selectCheck(0);
-      }
-    }
-
-    function selectCheck(idx) {
-      const failures = results.results.filter(c => c.worst === "FAIL");
-      if (!failures[idx]) return;
-
-      currentCheckIdx = idx;
-      currentDeviceIdx = 0;
-
-      // Update card selection
-      cardsEl.querySelectorAll(".card").forEach((c, i) => {
-        c.classList.toggle("selected", i === idx);
-      });
-
+  cardsEl.querySelectorAll(".card").forEach(card => {
+    card.addEventListener("click", () => {
+      selectedIdx = parseInt(card.dataset.idx);
+      deviceIdx = 0;
+      render();
       renderDetail();
-    }
-
-    function renderDetail() {
-      if (currentCheckIdx === null || !results) return;
-
-      const failures = results.results.filter(c => c.worst === "FAIL");
-      const check = failures[currentCheckIdx];
-
-      canvasTitleEl.textContent = check.label;
-
-      const devices = check.devices;
-      const device = devices[currentDeviceIdx];
-
-      // Update nav
-      prevBtn.disabled = currentDeviceIdx === 0;
-      nextBtn.disabled = currentDeviceIdx === devices.length - 1;
-      deviceInfoEl.textContent = \`\${device.name} (\${device.width}px)\`;
-
-      // Render iframe
-      const width = device.width;
-      const scale = Math.min(1, window.innerWidth * 0.7 / width);
-      canvasViewportEl.innerHTML = \`
-        <div class="viewport-frame">
-          <iframe
-            src="\${TARGET}\${check.page}"
-            style="width: \${width}px; height: auto; transform: scale(\${scale});"
-          ></iframe>
-        </div>
-      \`;
-
-      // Render device tabs
-      deviceListEl.innerHTML = devices.map((d, i) => \`
-        <button class="device-btn \${i === currentDeviceIdx ? "active" : ""}" data-idx="\${i}">
-          \${d.name}
-        </button>
-      \`).join("");
-
-      deviceListEl.querySelectorAll(".device-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-          currentDeviceIdx = parseInt(btn.dataset.idx);
-          renderDetail();
-        });
-      });
-    }
-
-    // Keyboard nav
-    document.addEventListener("keydown", (e) => {
-      if (!results || currentCheckIdx === null) return;
-
-      const failures = results.results.filter(c => c.worst === "FAIL");
-      const check = failures[currentCheckIdx];
-      const devices = check.devices;
-
-      if (e.key === "ArrowLeft") {
-        if (currentDeviceIdx > 0) {
-          currentDeviceIdx--;
-          renderDetail();
-        }
-      } else if (e.key === "ArrowRight") {
-        if (currentDeviceIdx < devices.length - 1) {
-          currentDeviceIdx++;
-          renderDetail();
-        }
-      } else if (e.key === "Escape") {
-        currentCheckIdx = null;
-        cardsEl.querySelectorAll(".card").forEach(c => c.classList.remove("selected"));
-        canvasViewportEl.innerHTML = '<div class="viewport-empty">Select a failed test to see device previews</div>';
-      }
     });
+  });
 
-    prevBtn.addEventListener("click", () => {
-      if (currentDeviceIdx > 0) {
-        currentDeviceIdx--;
-        renderDetail();
-      }
+  if (selectedIdx !== null) renderDetail();
+  else {
+    viewportEl.innerHTML = '<div class="viewport-empty">Select a check to see<br/>how it renders on each device</div>';
+    deviceBarEl.innerHTML = "";
+    titleEl.textContent = "Click a check to preview";
+    deviceLabelEl.textContent = "";
+    prevBtn.disabled = true;
+    nextBtn.disabled = true;
+  }
+}
+
+function renderDetail() {
+  const list = filtered();
+  const check = list[selectedIdx];
+  if (!check) return;
+
+  titleEl.textContent = check.label;
+
+  const dev = check.devices[deviceIdx];
+  prevBtn.disabled = deviceIdx === 0;
+  nextBtn.disabled = deviceIdx === check.devices.length - 1;
+  deviceLabelEl.textContent = dev.name + " (" + dev.width + "px)";
+
+  // Compute scale to fit viewport panel
+  const vpRect = viewportEl.getBoundingClientRect();
+  const maxW = vpRect.width - 32;
+  const maxH = vpRect.height - 32;
+  const scale = Math.min(1, maxW / dev.width, maxH / 900);
+  const scaledW = Math.round(dev.width * scale);
+  const scaledH = Math.round(900 * scale);
+
+  viewportEl.innerHTML =
+    '<div class="viewport-frame" style="width:' + scaledW + 'px;height:' + scaledH + 'px;">' +
+      '<iframe src="' + TARGET + check.page + '" ' +
+        'style="width:' + dev.width + 'px;height:900px;transform:scale(' + scale + ');" ' +
+        'loading="lazy"></iframe>' +
+    '</div>';
+
+  // Device bar
+  deviceBarEl.innerHTML = check.devices.map((d, i) => {
+    const color = d.status === "FAIL" ? "var(--fail)" : d.status === "WARN" ? "var(--warn)" : "var(--pass)";
+    return '<button class="device-btn' + (i === deviceIdx ? ' active' : '') + '" data-i="' + i + '">' +
+      '<span class="status-dot" style="background:' + color + '"></span>' +
+      d.name +
+    '</button>';
+  }).join("");
+
+  deviceBarEl.querySelectorAll(".device-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      deviceIdx = parseInt(btn.dataset.i);
+      renderDetail();
     });
+  });
+}
 
-    nextBtn.addEventListener("click", () => {
-      const failures = results.results.filter(c => c.worst === "FAIL");
-      const check = failures[currentCheckIdx];
-      if (currentDeviceIdx < check.devices.length - 1) {
-        currentDeviceIdx++;
-        renderDetail();
-      }
-    });
+// --- Keyboard nav ---
+document.addEventListener("keydown", (e) => {
+  const list = filtered();
+  if (!list.length) return;
 
-    runBtn.addEventListener("click", loadResults);
+  if (e.key === "ArrowLeft" && selectedIdx !== null) {
+    if (deviceIdx > 0) { deviceIdx--; renderDetail(); }
+  } else if (e.key === "ArrowRight" && selectedIdx !== null) {
+    const check = list[selectedIdx];
+    if (deviceIdx < check.devices.length - 1) { deviceIdx++; renderDetail(); }
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    if (selectedIdx === null) { selectedIdx = 0; } else if (selectedIdx > 0) { selectedIdx--; }
+    deviceIdx = 0; render(); renderDetail();
+  } else if (e.key === "ArrowDown") {
+    e.preventDefault();
+    if (selectedIdx === null) { selectedIdx = 0; } else if (selectedIdx < list.length - 1) { selectedIdx++; }
+    deviceIdx = 0; render(); renderDetail();
+  } else if (e.key === "Escape") {
+    selectedIdx = null; deviceIdx = 0; render();
+  }
+});
 
-    // Load on startup
-    loadResults();
-  </script>
+prevBtn.addEventListener("click", () => { if (deviceIdx > 0) { deviceIdx--; renderDetail(); } });
+nextBtn.addEventListener("click", () => {
+  const list = filtered();
+  if (selectedIdx !== null && deviceIdx < list[selectedIdx].devices.length - 1) { deviceIdx++; renderDetail(); }
+});
+
+// --- Initial load ---
+(async () => {
+  try {
+    const resp = await fetch("http://" + RUNNER + "/api/results");
+    if (resp.ok) { data = await resp.json(); render(); }
+  } catch {}
+})();
+</script>
 </body>
-</html>
-`;
+</html>`;
 
 const server = createServer((_req, res) => {
   res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-  res.end(html.replace("${TARGET}", TARGET).replace("${RUNNER}", RUNNER).replace("${CONFIG}", JSON.stringify(config)));
+  res.end(html.replace(/RUNNER_URL/g, RUNNER).replace(/TARGET_URL/g, TARGET));
 });
 
 server.listen(PORT, () => {
-  console.log(`Test Failure Viewer: http://localhost:${PORT}`);
-  try {
-    execSync(`open "http://localhost:${PORT}"`);
-  } catch {}
+  const url = `http://localhost:${PORT}`;
+  console.log(`Viewport Preview: ${url}`);
+  console.log(`  runner: http://${RUNNER}`);
+  console.log(`  target: ${TARGET}`);
+  try { execSync(`open "${url}"`); } catch {}
 });
