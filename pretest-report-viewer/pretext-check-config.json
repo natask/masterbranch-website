@@ -1,88 +1,73 @@
 {
   "project": "masterbranch",
   "googleFontsUrl": "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Cinzel:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap",
-  "pages": ["/", "/about", "/login", "/dashboard", "/projects/new", "/branches/new"],
+  "pages": ["/", "/about", "/login", "/dashboard"],
   "breakpoints": [
-    { "name": "iPhone SE",       "width": 375, "rootFontSize": "18px" },
-    { "name": "Android mid",     "width": 412, "rootFontSize": "18px" },
-    { "name": "iPhone Pro Max",  "width": 430, "rootFontSize": "18px" },
-    { "name": "Tablet portrait", "width": 768, "rootFontSize": "22px" },
-    { "name": "Tablet landscape","width": 1024,"rootFontSize": "28px" },
-    { "name": "Laptop 13\"",     "width": 1280,"rootFontSize": "28px" },
-    { "name": "Laptop 14\"",     "width": 1440,"rootFontSize": "28px" },
-    { "name": "Laptop 16\"",     "width": 1536,"rootFontSize": "28px" },
-    { "name": "Desktop",         "width": 1920,"rootFontSize": "28px" }
+    { "name": "iPhone SE",        "width": 375 },
+    { "name": "Android mid",      "width": 412 },
+    { "name": "iPhone Pro Max",   "width": 430 },
+    { "name": "Tablet portrait",  "width": 768 },
+    { "name": "Tablet landscape", "width": 1024 },
+    { "name": "Laptop 13\"",      "width": 1280 },
+    { "name": "Laptop 14\"",      "width": 1440 },
+    { "name": "Laptop 16\"",      "width": 1536 },
+    { "name": "Desktop",          "width": 1920 }
   ],
   "checks": [
     {
-      "label": "/ Hero — The Master Branch",
-      "text": "The Master Branch",
+      "label": "/ Hero — The Master",
+      "text": "The Master",
       "page": "/",
       "fontFamily": "Cinzel",
       "fontWeight": "700",
-      "fontSize": "67.5px",
-      "lineHeight": 74,
-      "maxLines": 2,
-      "horizontalPadding": 48,
-      "responsive": [
-        { "minWidth": 0,    "fontSize": "67.5px" },
-        { "minWidth": 768,  "fontSize": "99px" },
-        { "minWidth": 1024, "fontSize": "168px" }
-      ]
+      "classes": "text-6xl md:text-7xl lg:text-8xl",
+      "containerPadding": "px-6"
     },
     {
-      "label": "/ Hero subheading",
+      "label": "/ Hero — Branch",
+      "text": "Branch",
+      "page": "/",
+      "fontFamily": "Cinzel",
+      "fontWeight": "700",
+      "classes": "text-6xl md:text-7xl lg:text-8xl",
+      "containerPadding": "px-6"
+    },
+    {
+      "label": "/ Hero tagline",
       "text": "Build something you will use.",
       "page": "/",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "400",
-      "fontSize": "20.25px",
-      "lineHeight": 28,
-      "maxLines": 1,
-      "horizontalPadding": 48,
-      "responsive": [
-        { "minWidth": 0,    "fontSize": "20.25px" },
-        { "minWidth": 768,  "fontSize": "27.5px" },
-        { "minWidth": 1024, "fontSize": "35px" }
-      ]
+      "classes": "text-lg md:text-xl",
+      "containerPadding": "px-6"
     },
     {
-      "label": "/ Location tag — San Francisco",
+      "label": "/ Location badge",
       "text": "San Francisco",
       "page": "/",
       "fontFamily": "Cinzel",
       "fontWeight": "500",
-      "fontSize": "13.5px",
-      "lineHeight": 20,
-      "maxLines": 1,
-      "horizontalPadding": 48
+      "classes": "text-xs",
+      "containerPadding": "px-6"
     },
     {
-      "label": "/ Manifesto heading (desktop)",
+      "label": "/ Nav brand — The Master Branch",
+      "text": "The Master Branch",
+      "page": "/",
+      "fontFamily": "Cinzel",
+      "fontWeight": "600",
+      "classes": "text-sm",
+      "containerPadding": "px-6",
+      "noWrap": true
+    },
+    {
+      "label": "/ Manifesto heading",
       "text": "In building, you learn how to build.",
       "page": "/",
       "fontFamily": "Cinzel",
       "fontWeight": "600",
-      "fontSize": "33.75px",
-      "lineHeight": 40,
-      "maxLines": 2,
-      "horizontalPadding": 48,
-      "responsive": [
-        { "minWidth": 0,    "fontSize": "33.75px" },
-        { "minWidth": 768,  "fontSize": "49.5px" },
-        { "minWidth": 1024, "fontSize": "63px" }
-      ]
-    },
-    {
-      "label": "/ Manifesto heading (mobile)",
-      "text": "Build. Learn. Repeat.",
-      "page": "/",
-      "fontFamily": "Cinzel",
-      "fontWeight": "600",
-      "fontSize": "33.75px",
-      "lineHeight": 40,
-      "maxLines": 1,
-      "horizontalPadding": 48
+      "classes": "text-3xl md:text-4xl",
+      "containerPadding": "px-6"
     },
     {
       "label": "/ Manifesto body 1",
@@ -90,14 +75,8 @@
       "page": "/",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "400",
-      "fontSize": "20.25px",
-      "lineHeight": 30,
-      "maxLines": 4,
-      "horizontalPadding": 48,
-      "responsive": [
-        { "minWidth": 0,    "fontSize": "20.25px" },
-        { "minWidth": 768,  "fontSize": "27.5px" }
-      ]
+      "classes": "text-lg",
+      "containerPadding": "px-6"
     },
     {
       "label": "/ Manifesto body 2",
@@ -105,14 +84,8 @@
       "page": "/",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "400",
-      "fontSize": "20.25px",
-      "lineHeight": 30,
-      "maxLines": 4,
-      "horizontalPadding": 48,
-      "responsive": [
-        { "minWidth": 0,    "fontSize": "20.25px" },
-        { "minWidth": 768,  "fontSize": "27.5px" }
-      ]
+      "classes": "text-lg",
+      "containerPadding": "px-6"
     },
     {
       "label": "/ Manifesto body 3",
@@ -120,14 +93,8 @@
       "page": "/",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "400",
-      "fontSize": "20.25px",
-      "lineHeight": 30,
-      "maxLines": 3,
-      "horizontalPadding": 48,
-      "responsive": [
-        { "minWidth": 0,    "fontSize": "20.25px" },
-        { "minWidth": 768,  "fontSize": "27.5px" }
-      ]
+      "classes": "text-lg",
+      "containerPadding": "px-6"
     },
     {
       "label": "/ Manifesto body 4",
@@ -135,100 +102,85 @@
       "page": "/",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "400",
-      "fontSize": "20.25px",
-      "lineHeight": 30,
-      "maxLines": 5,
-      "horizontalPadding": 48,
-      "responsive": [
-        { "minWidth": 0,    "fontSize": "20.25px" },
-        { "minWidth": 768,  "fontSize": "27.5px" }
-      ]
+      "classes": "text-lg",
+      "containerPadding": "px-6"
     },
     {
-      "label": "/ Cinzel callout",
+      "label": "/ Manifesto accent",
       "text": "No one hands you the system. You build it yourself.",
       "page": "/",
       "fontFamily": "Cinzel",
       "fontWeight": "500",
-      "fontSize": "22.5px",
-      "lineHeight": 30,
-      "maxLines": 2,
-      "horizontalPadding": 48
+      "classes": "text-xl",
+      "containerPadding": "px-6"
     },
     {
-      "label": "/ Schedule heading (desktop)",
+      "label": "/ Nights heading",
       "text": "Every day. Four hours.",
       "page": "/",
       "fontFamily": "Cinzel",
       "fontWeight": "600",
-      "fontSize": "33.75px",
-      "lineHeight": 40,
-      "maxLines": 1,
-      "horizontalPadding": 48,
-      "responsive": [
-        { "minWidth": 0,    "fontSize": "33.75px" },
-        { "minWidth": 768,  "fontSize": "49.5px" }
-      ]
+      "classes": "text-3xl md:text-4xl",
+      "containerPadding": "px-6"
     },
     {
-      "label": "/ No Sponsors",
-      "text": "No Sponsors",
+      "label": "/ Principles — No Sponsors",
+      "text": "No Sponsors.",
       "page": "/",
       "fontFamily": "Cinzel",
       "fontWeight": "600",
-      "fontSize": "20.25px",
-      "lineHeight": 28,
-      "maxLines": 1,
-      "horizontalPadding": 48
+      "classes": "text-lg",
+      "containerPadding": "px-6",
+      "noWrap": true
     },
     {
-      "label": "/ No BS",
-      "text": "No BS",
+      "label": "/ Principles — No BS",
+      "text": "No BS.",
       "page": "/",
       "fontFamily": "Cinzel",
       "fontWeight": "600",
-      "fontSize": "20.25px",
-      "lineHeight": 28,
-      "maxLines": 1,
-      "horizontalPadding": 48
+      "classes": "text-lg",
+      "containerPadding": "px-6",
+      "noWrap": true
     },
     {
-      "label": "/ Build build build",
+      "label": "/ Closing heading",
       "text": "Build build build.",
       "page": "/",
       "fontFamily": "Cinzel",
       "fontWeight": "600",
-      "fontSize": "27px",
-      "lineHeight": 34,
-      "maxLines": 1,
-      "horizontalPadding": 48,
-      "responsive": [
-        { "minWidth": 0,    "fontSize": "27px" },
-        { "minWidth": 768,  "fontSize": "41.25px" }
-      ]
+      "classes": "text-2xl md:text-3xl",
+      "containerPadding": "px-6"
     },
     {
-      "label": "/ Footer — THE MASTER BRANCH",
+      "label": "/ Footer copyright",
+      "text": "The Master Branch © 2025",
+      "page": "/",
+      "fontFamily": "Cinzel",
+      "fontWeight": "400",
+      "inlineStyle": "clamp(10px, 1.1vw, 20px)",
+      "containerPadding": "px-6",
+      "noWrap": true
+    },
+    {
+      "label": "/ Footer tagline",
+      "text": "Built by builders, for builders.",
+      "page": "/",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "400",
+      "inlineStyle": "clamp(12px, 1.4vw, 22px)",
+      "containerPadding": "px-6",
+      "noWrap": true
+    },
+    {
+      "label": "/ Footer wordmark — THE MASTER BRANCH",
       "text": "THE MASTER BRANCH",
       "page": "/",
       "fontFamily": "Cinzel",
       "fontWeight": "700",
-      "fontSize": "160px",
-      "lineHeight": 141,
-      "maxLines": 1,
+      "inlineStyle": "clamp(16px, 9vw, 160px)",
       "horizontalPadding": 0,
-      "noWrap": true,
-      "responsive": [
-        { "minWidth": 0,    "fontSize": "33.75px" },
-        { "minWidth": 412,  "fontSize": "37.08px" },
-        { "minWidth": 430,  "fontSize": "38.7px" },
-        { "minWidth": 768,  "fontSize": "69.12px" },
-        { "minWidth": 1024, "fontSize": "92.16px" },
-        { "minWidth": 1280, "fontSize": "115.2px" },
-        { "minWidth": 1440, "fontSize": "129.6px" },
-        { "minWidth": 1536, "fontSize": "138.24px" },
-        { "minWidth": 1920, "fontSize": "160px" }
-      ]
+      "noWrap": true
     },
     {
       "label": "/ CTA — Join",
@@ -236,41 +188,53 @@
       "page": "/",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "600",
-      "fontSize": "15.75px",
-      "lineHeight": 22,
-      "maxLines": 1,
-      "horizontalPadding": 64
+      "classes": "text-sm",
+      "containerPadding": "px-8"
     },
     {
-      "label": "/about Hero — The Master Branch",
-      "text": "The Master Branch",
+      "label": "/ Explore Projects heading",
+      "text": "Explore Projects",
+      "page": "/",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "700",
+      "classes": "text-3xl",
+      "containerPadding": "px-6"
+    },
+    {
+      "label": "/ Card title — long project name",
+      "text": "Autonomous Delivery Drone Platform",
+      "page": "/",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "600",
+      "classes": "text-base",
+      "containerPadding": "p-4"
+    },
+    {
+      "label": "/about Hero — The Master",
+      "text": "The Master",
       "page": "/about",
       "fontFamily": "Cinzel",
       "fontWeight": "700",
-      "fontSize": "33.75px",
-      "lineHeight": 40,
-      "maxLines": 2,
-      "horizontalPadding": 40,
-      "responsive": [
-        { "minWidth": 0,    "fontSize": "33.75px" },
-        { "minWidth": 640,  "fontSize": "55px" },
-        { "minWidth": 768,  "fontSize": "82.5px" }
-      ]
+      "classes": "text-3xl sm:text-5xl md:text-6xl",
+      "containerPadding": "px-5 sm:px-6"
     },
     {
-      "label": "/about Subheading (desktop)",
+      "label": "/about Hero — Branch",
+      "text": "Branch",
+      "page": "/about",
+      "fontFamily": "Cinzel",
+      "fontWeight": "700",
+      "classes": "text-3xl sm:text-5xl md:text-6xl",
+      "containerPadding": "px-5 sm:px-6"
+    },
+    {
+      "label": "/about Subtitle",
       "text": "Build software you will still use two weeks from now.",
       "page": "/about",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "400",
-      "fontSize": "18px",
-      "lineHeight": 26,
-      "maxLines": 2,
-      "horizontalPadding": 40,
-      "responsive": [
-        { "minWidth": 0,    "fontSize": "18px" },
-        { "minWidth": 640,  "fontSize": "19.25px" }
-      ]
+      "classes": "text-base sm:text-lg",
+      "containerPadding": "px-5 sm:px-6"
     },
     {
       "label": "/about Body — Master Branch is a build club",
@@ -278,10 +242,8 @@
       "page": "/about",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "400",
-      "fontSize": "18px",
-      "lineHeight": 26,
-      "maxLines": 5,
-      "horizontalPadding": 40
+      "classes": "text-base",
+      "containerPadding": "px-5 sm:px-6"
     },
     {
       "label": "/about Build vs Hack heading",
@@ -289,10 +251,8 @@
       "page": "/about",
       "fontFamily": "Cinzel",
       "fontWeight": "400",
-      "fontSize": "22.5px",
-      "lineHeight": 30,
-      "maxLines": 1,
-      "horizontalPadding": 40
+      "classes": "text-xl",
+      "containerPadding": "px-5 sm:px-6"
     },
     {
       "label": "/about Build vs Hack body",
@@ -300,10 +260,8 @@
       "page": "/about",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "400",
-      "fontSize": "18px",
-      "lineHeight": 26,
-      "maxLines": 4,
-      "horizontalPadding": 40
+      "classes": "text-base",
+      "containerPadding": "px-5 sm:px-6"
     },
     {
       "label": "/about Why this exists heading",
@@ -311,10 +269,8 @@
       "page": "/about",
       "fontFamily": "Cinzel",
       "fontWeight": "400",
-      "fontSize": "22.5px",
-      "lineHeight": 30,
-      "maxLines": 1,
-      "horizontalPadding": 40
+      "classes": "text-xl",
+      "containerPadding": "px-5 sm:px-6"
     },
     {
       "label": "/about Why body",
@@ -322,21 +278,26 @@
       "page": "/about",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "400",
-      "fontSize": "18px",
-      "lineHeight": 26,
-      "maxLines": 4,
-      "horizontalPadding": 40
+      "classes": "text-base",
+      "containerPadding": "px-5 sm:px-6"
     },
     {
-      "label": "/about Cinzel callout (desktop)",
+      "label": "/about Cinzel callout",
       "text": "No one is going to hand you the system. You have to build it yourself.",
       "page": "/about",
       "fontFamily": "Cinzel",
       "fontWeight": "400",
-      "fontSize": "18px",
-      "lineHeight": 26,
-      "maxLines": 3,
-      "horizontalPadding": 40
+      "classes": "text-base",
+      "containerPadding": "px-5 sm:px-6"
+    },
+    {
+      "label": "/about Build build build",
+      "text": "Build build build.",
+      "page": "/about",
+      "fontFamily": "Cinzel",
+      "fontWeight": "400",
+      "classes": "text-base",
+      "containerPadding": "px-5 sm:px-6"
     },
     {
       "label": "/login — Welcome",
@@ -344,10 +305,8 @@
       "page": "/login",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "700",
-      "fontSize": "81px",
-      "lineHeight": 88,
-      "maxLines": 1,
-      "horizontalPadding": 48
+      "classes": "text-7xl",
+      "containerPadding": "px-6"
     },
     {
       "label": "/login — Sign in with GitHub",
@@ -355,10 +314,8 @@
       "page": "/login",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "400",
-      "fontSize": "15.75px",
-      "lineHeight": 22,
-      "maxLines": 1,
-      "horizontalPadding": 48
+      "classes": "text-sm",
+      "containerPadding": "px-6"
     },
     {
       "label": "/dashboard — Welcome back",
@@ -366,10 +323,8 @@
       "page": "/dashboard",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "700",
-      "fontSize": "40.5px",
-      "lineHeight": 48,
-      "maxLines": 1,
-      "horizontalPadding": 48
+      "classes": "text-4xl",
+      "containerPadding": "px-6"
     },
     {
       "label": "/dashboard — Share what you've built",
@@ -377,10 +332,8 @@
       "page": "/dashboard",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "700",
-      "fontSize": "22.5px",
-      "lineHeight": 30,
-      "maxLines": 1,
-      "horizontalPadding": 48
+      "classes": "text-xl",
+      "containerPadding": "px-6"
     },
     {
       "label": "/dashboard — Upload description",
@@ -388,10 +341,8 @@
       "page": "/dashboard",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "400",
-      "fontSize": "15.75px",
-      "lineHeight": 22,
-      "maxLines": 3,
-      "horizontalPadding": 48
+      "classes": "text-sm",
+      "containerPadding": "px-6"
     },
     {
       "label": "/dashboard — Your Projects heading",
@@ -399,10 +350,8 @@
       "page": "/dashboard",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "700",
-      "fontSize": "27px",
-      "lineHeight": 34,
-      "maxLines": 1,
-      "horizontalPadding": 48
+      "classes": "text-2xl",
+      "containerPadding": "px-6"
     },
     {
       "label": "/dashboard — Your Branches heading",
@@ -410,10 +359,8 @@
       "page": "/dashboard",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "700",
-      "fontSize": "27px",
-      "lineHeight": 34,
-      "maxLines": 1,
-      "horizontalPadding": 48
+      "classes": "text-2xl",
+      "containerPadding": "px-6"
     },
     {
       "label": "/dashboard — Fork description",
@@ -421,175 +368,35 @@
       "page": "/dashboard",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "400",
-      "fontSize": "15.75px",
-      "lineHeight": 22,
-      "maxLines": 2,
-      "horizontalPadding": 48
+      "classes": "text-sm",
+      "containerPadding": "px-6"
     },
     {
-      "label": "/projects/new — New Project heading",
-      "text": "New Project",
-      "page": "/projects/new",
-      "fontFamily": "Cormorant Garamond",
-      "fontWeight": "700",
-      "fontSize": "33.75px",
-      "lineHeight": 40,
-      "maxLines": 1,
-      "horizontalPadding": 48
-    },
-    {
-      "label": "/projects/new — description",
-      "text": "Share what you've been building.",
-      "page": "/projects/new",
-      "fontFamily": "Cormorant Garamond",
-      "fontWeight": "400",
-      "fontSize": "15.75px",
-      "lineHeight": 22,
-      "maxLines": 1,
-      "horizontalPadding": 48
-    },
-    {
-      "label": "/branches/new — Create a Branch",
-      "text": "Create a Branch",
-      "page": "/branches/new",
-      "fontFamily": "Cormorant Garamond",
-      "fontWeight": "700",
-      "fontSize": "33.75px",
-      "lineHeight": 40,
-      "maxLines": 1,
-      "horizontalPadding": 48
-    },
-    {
-      "label": "/branches/new — description",
-      "text": "Fork the master branch. Your branch gets its own subdomain and community.",
-      "page": "/branches/new",
-      "fontFamily": "Cormorant Garamond",
-      "fontWeight": "400",
-      "fontSize": "15.75px",
-      "lineHeight": 22,
-      "maxLines": 3,
-      "horizontalPadding": 48
-    },
-    {
-      "label": "Explore Projects heading",
-      "text": "Explore Projects",
-      "page": "/",
-      "fontFamily": "Cormorant Garamond",
-      "fontWeight": "700",
-      "fontSize": "33.75px",
-      "lineHeight": 40,
-      "maxLines": 1,
-      "horizontalPadding": 48
-    },
-    {
-      "label": "Card title — long project name",
-      "text": "Autonomous Delivery Drone Platform",
-      "page": "/",
-      "fontFamily": "Cormorant Garamond",
-      "fontWeight": "600",
-      "fontSize": "20.25px",
-      "lineHeight": 28,
-      "maxLines": 2,
-      "horizontalPadding": 32
-    },
-    {
-      "label": "Modal — Upload Project heading",
-      "text": "Upload Project",
-      "page": "/dashboard",
-      "fontFamily": "Cormorant Garamond",
-      "fontWeight": "700",
-      "fontSize": "27px",
-      "lineHeight": 34,
-      "maxLines": 1,
-      "horizontalPadding": 64
-    },
-    {
-      "label": "Modal — New Project heading",
+      "label": "/dashboard — New Project heading (modal)",
       "text": "New Project",
       "page": "/dashboard",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "700",
-      "fontSize": "27px",
-      "lineHeight": 34,
-      "maxLines": 1,
+      "classes": "text-2xl",
       "horizontalPadding": 64
     },
     {
-      "label": "Modal — Create a Branch heading",
+      "label": "/dashboard — Create a Branch heading (modal)",
       "text": "Create a Branch",
       "page": "/dashboard",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "700",
-      "fontSize": "27px",
-      "lineHeight": 34,
-      "maxLines": 1,
+      "classes": "text-2xl",
       "horizontalPadding": 64
     },
     {
-      "label": "Modal — Fork description",
+      "label": "/dashboard — Fork modal description",
       "text": "Fork the master branch. Your branch gets its own subdomain and community.",
       "page": "/dashboard",
       "fontFamily": "Cormorant Garamond",
       "fontWeight": "400",
-      "fontSize": "18px",
-      "lineHeight": 26,
-      "maxLines": 3,
+      "classes": "text-base",
       "horizontalPadding": 64
-    },
-    {
-      "label": "/about — Build build build",
-      "text": "Build build build.",
-      "page": "/about",
-      "fontFamily": "Cinzel",
-      "fontWeight": "400",
-      "fontSize": "18px",
-      "lineHeight": 26,
-      "maxLines": 1,
-      "horizontalPadding": 40
-    },
-    {
-      "label": "Branch not found heading",
-      "text": "Branch not found",
-      "page": "/branch",
-      "fontFamily": "Cormorant Garamond",
-      "fontWeight": "700",
-      "fontSize": "33.75px",
-      "lineHeight": 40,
-      "maxLines": 1,
-      "horizontalPadding": 48
-    },
-    {
-      "label": "Application Submitted heading",
-      "text": "Application Submitted",
-      "page": "/branch",
-      "fontFamily": "Cormorant Garamond",
-      "fontWeight": "700",
-      "fontSize": "27px",
-      "lineHeight": 34,
-      "maxLines": 1,
-      "horizontalPadding": 48
-    },
-    {
-      "label": "Edit Project heading",
-      "text": "Edit Project",
-      "page": "/projects",
-      "fontFamily": "Cormorant Garamond",
-      "fontWeight": "700",
-      "fontSize": "33.75px",
-      "lineHeight": 40,
-      "maxLines": 1,
-      "horizontalPadding": 48
-    },
-    {
-      "label": "Pending Applications heading",
-      "text": "Pending Applications",
-      "page": "/branch",
-      "fontFamily": "Cormorant Garamond",
-      "fontWeight": "700",
-      "fontSize": "22.5px",
-      "lineHeight": 30,
-      "maxLines": 1,
-      "horizontalPadding": 48
     }
   ]
 }

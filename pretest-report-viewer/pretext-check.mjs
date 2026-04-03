@@ -2,11 +2,11 @@
 /**
  * pretext-check.mjs
  *
- * Test runner server. Serves a measurement page that loads real fonts,
- * uses @chenglou/pretext for accurate text layout, and exposes results
- * via GET /api/results.
+ * Test runner server. Resolves Tailwind classes to pixel values at each
+ * breakpoint using pure math, then serves a measurement page that uses
+ * @chenglou/pretext for accurate glyph-level layout.
  *
- * Desktop breakpoint is the baseline — other viewports are compared against it.
+ * Desktop breakpoint is the baseline — other viewports compared against it.
  *
  * Usage:
  *   node pretext-check.mjs                    # serve on :4444
@@ -18,6 +18,7 @@ import { createServer } from "http";
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
+import { resolveTextSize, resolvePadding } from "./tailwind-resolver.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -39,7 +40,61 @@ function loadConfig() {
   return JSON.parse(readFileSync(configPath, "utf-8"));
 }
 
+/**
+ * Resolve a check's Tailwind classes to pixel font sizes and container widths
+ * at each breakpoint. Pure math — no browser needed for this step.
+ */
+function resolveCheck(check, breakpoints) {
+  return breakpoints.map(bp => {
+    let fontSize;
+
+    if (check.classes) {
+      // Tailwind class resolution
+      fontSize = resolveTextSize(check.classes, bp.width);
+    } else if (check.inlineStyle) {
+      // clamp() or raw pixel value
+      fontSize = resolveTextSize(check.inlineStyle, bp.width);
+    } else if (check.responsive) {
+      // Legacy: explicit responsive array
+      let fs = check.fontSize;
+      for (const o of check.responsive) {
+        if (bp.width >= o.minWidth) fs = o.fontSize;
+      }
+      fontSize = parseFloat(fs);
+    } else {
+      fontSize = parseFloat(check.fontSize);
+    }
+
+    let horizontalPadding;
+    if (check.containerPadding) {
+      horizontalPadding = resolvePadding(check.containerPadding, bp.width);
+    } else {
+      horizontalPadding = check.horizontalPadding || 48;
+    }
+
+    const containerWidth = bp.width - horizontalPadding;
+
+    return {
+      breakpoint: bp.name,
+      width: bp.width,
+      fontSize: fontSize + "px",
+      containerWidth,
+      horizontalPadding,
+    };
+  });
+}
+
 function buildMeasurementPage(config) {
+  const breakpoints = config.breakpoints;
+  const desktopBp = breakpoints[breakpoints.length - 1];
+
+  // Pre-resolve all checks to pixel values at each breakpoint
+  const resolvedChecks = config.checks.map(check => ({
+    ...check,
+    resolved: resolveCheck(check, breakpoints),
+    desktopResolved: resolveCheck(check, [desktopBp])[0],
+  }));
+
   return `<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8"/>
@@ -54,75 +109,61 @@ ${config.googleFontsUrl ? '<link href="' + config.googleFontsUrl + '" rel="style
   .err { color: #f87171; }
 </style>
 </head><body>
-<div id="status">Loading fonts &amp; measuring...</div>
+<div id="status">Loading fonts & measuring...</div>
 <script type="module">
 import { prepare, layout } from "https://esm.sh/@chenglou/pretext@0.0.4";
 
-const config = ${JSON.stringify(config)};
+const checks = ${JSON.stringify(resolvedChecks)};
+const breakpoints = ${JSON.stringify(breakpoints)};
 const statusEl = document.getElementById("status");
 
 // Load all font variants used in checks
 const fontLoads = new Set();
-for (const ck of config.checks) {
+for (const ck of checks) {
   fontLoads.add((ck.fontWeight || "400") + ' 16px "' + ck.fontFamily + '"');
 }
 await Promise.all([...fontLoads].map(f => document.fonts.load(f)));
 
-const breakpoints = config.breakpoints;
-const desktopBp = breakpoints[breakpoints.length - 1];
-
 const results = [];
 
-for (const ck of config.checks) {
-  const lh = ck.lineHeight || parseFloat(ck.fontSize) * 1.4;
+for (const ck of checks) {
+  const lh = ck.lineHeight || 1.4;
 
-  // Measure at desktop to get baseline
-  let desktopFs = ck.fontSize;
-  if (ck.responsive) {
-    for (const o of ck.responsive) {
-      if (desktopBp.width >= o.minWidth) desktopFs = o.fontSize;
-    }
-  }
-  const desktopFont = (ck.fontWeight || "400") + " " + desktopFs + " " + ck.fontFamily;
-  const desktopCw = desktopBp.width - (ck.horizontalPadding || 48);
-  const desktopPrep = prepare(ck.text, desktopFont);
+  // Get baseline from desktop
+  const dsk = ck.desktopResolved;
+  const dskFontStr = (ck.fontWeight || "400") + " " + dsk.fontSize + " " + ck.fontFamily;
+  const dskLh = parseFloat(dsk.fontSize) * lh;
+  const dskPrep = prepare(ck.text, dskFontStr);
 
   let baselineLines;
   if (ck.noWrap) {
     baselineLines = 1;
-  } else if (ck.maxLines) {
-    baselineLines = ck.maxLines;
   } else {
-    const desktopLayout = layout(desktopPrep, desktopCw, lh);
-    baselineLines = desktopLayout.lineCount;
+    const dskLayout = layout(dskPrep, dsk.containerWidth, dskLh);
+    baselineLines = dskLayout.lineCount;
   }
 
   const devices = [];
 
-  for (const bp of breakpoints) {
-    let fs = ck.fontSize;
-    if (ck.responsive) {
-      for (const o of ck.responsive) {
-        if (bp.width >= o.minWidth) fs = o.fontSize;
-      }
-    }
-
-    const font = (ck.fontWeight || "400") + " " + fs + " " + ck.fontFamily;
-    const cw = bp.width - (ck.horizontalPadding || 48);
+  for (let i = 0; i < breakpoints.length; i++) {
+    const bp = breakpoints[i];
+    const r = ck.resolved[i];
+    const fontStr = (ck.fontWeight || "400") + " " + r.fontSize + " " + ck.fontFamily;
+    const bpLh = parseFloat(r.fontSize) * lh;
 
     let lc = 0, tw = 0, st = "PASS";
 
     try {
-      const p = prepare(ck.text, font);
+      const p = prepare(ck.text, fontStr);
 
       if (ck.noWrap) {
-        const singleLine = layout(p, 99999, lh);
+        const singleLine = layout(p, 99999, bpLh);
         tw = Math.round(singleLine.width || 0);
         lc = 1;
-        st = tw > cw ? "FAIL" : tw > cw * 0.9 ? "WARN" : "PASS";
+        st = tw > r.containerWidth ? "FAIL" : tw > r.containerWidth * 0.9 ? "WARN" : "PASS";
       } else {
-        const r = layout(p, cw, lh);
-        lc = r.lineCount;
+        const result = layout(p, r.containerWidth, bpLh);
+        lc = result.lineCount;
         const drift = lc - baselineLines;
         st = drift <= 0 ? "PASS" : drift === 1 ? "WARN" : "FAIL";
       }
@@ -134,8 +175,8 @@ for (const ck of config.checks) {
     devices.push({
       name: bp.name,
       width: bp.width,
-      fontSize: fs,
-      containerWidth: cw,
+      fontSize: r.fontSize,
+      containerWidth: r.containerWidth,
       lineCount: lc,
       baselineLines,
       status: st,
@@ -155,7 +196,6 @@ for (const ck of config.checks) {
     text: ck.text,
     page: ck.page || "/",
     fontFamily: ck.fontFamily,
-    fontSize: ck.fontSize,
     baselineLines,
     worst,
     devices,
@@ -184,7 +224,6 @@ const output = {
   results,
 };
 
-// Post results back to server
 try {
   await fetch("/api/results", {
     method: "POST",
@@ -197,24 +236,6 @@ try {
   statusEl.textContent = "Failed to post results: " + e.message;
   statusEl.className = "err";
 }
-
-console.table(
-  results
-    .flatMap(r =>
-      r.devices
-        .filter(d => d.status !== "PASS")
-        .map(d => ({
-          check: r.label,
-          page: r.page,
-          device: d.name,
-          width: d.width,
-          fontSize: d.fontSize,
-          container: d.containerWidth,
-          lines: d.noWrap ? d.textWidth + "/" + d.containerWidth + "px" : d.lineCount + "/" + d.baselineLines + " lines",
-          status: d.status,
-        }))
-    )
-);
 </script>
 </body></html>`;
 }
@@ -223,21 +244,19 @@ const server = createServer((req, res) => {
   const config = loadConfig();
 
   if (req.method === "GET" && req.url === "/") {
-    // Serve measurement page — browser runs pretext, posts results back
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(buildMeasurementPage(config));
   } else if (req.method === "POST" && req.url === "/api/results") {
-    // Receive results from measurement page
     let body = "";
     req.on("data", (chunk) => (body += chunk));
     req.on("end", () => {
       try {
         latestResults = JSON.parse(body);
         console.log(
-          "Results received:",
-          latestResults.summary.fail + " fail /",
-          latestResults.summary.warn + " warn /",
-          latestResults.summary.pass + " pass"
+          "Results:",
+          latestResults.summary.fail, "fail /",
+          latestResults.summary.warn, "warn /",
+          latestResults.summary.pass, "pass"
         );
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end('{"ok":true}');
@@ -247,7 +266,6 @@ const server = createServer((req, res) => {
       }
     });
   } else if (req.method === "GET" && req.url === "/api/results") {
-    // Serve latest results to viewer
     if (latestResults) {
       res.writeHead(200, {
         "Content-Type": "application/json",
@@ -278,5 +296,4 @@ server.listen(PORT, () => {
   const url = `http://localhost:${PORT}`;
   console.log(`Pretext runner: ${url}`);
   console.log(`Results API:    ${url}/api/results`);
-  console.log(`Open ${url} in a browser to run measurements with real fonts.`);
 });
