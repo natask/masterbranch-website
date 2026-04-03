@@ -240,12 +240,51 @@ try {
 </body></html>`;
 }
 
+function cors(res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
 const server = createServer((req, res) => {
+  cors(res);
   const config = loadConfig();
 
-  if (req.method === "GET" && req.url === "/") {
-    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-    res.end(buildMeasurementPage(config));
+  if (req.method === "OPTIONS") {
+    res.writeHead(204);
+    res.end();
+  } else if (req.method === "GET" && req.url === "/api/config") {
+    // Return resolved config — pixel values at each breakpoint, ready for pretext
+    const breakpoints = config.breakpoints;
+    const resolvedChecks = config.checks.map(check => {
+      const resolved = resolveCheck(check, breakpoints);
+      const desktopResolved = resolveCheck(check, [breakpoints[breakpoints.length - 1]])[0];
+      return {
+        label: check.label,
+        text: check.text,
+        page: check.page || "/",
+        fontFamily: check.fontFamily,
+        fontWeight: check.fontWeight || "400",
+        lineHeight: check.lineHeight || 1.4,
+        noWrap: !!check.noWrap,
+        resolved,
+        desktopResolved,
+      };
+    });
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({
+      googleFontsUrl: config.googleFontsUrl || "",
+      breakpoints,
+      checks: resolvedChecks,
+    }));
+  } else if (req.method === "GET" && req.url === "/api/results") {
+    if (latestResults) {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(latestResults));
+    } else {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end('{"error":"no results yet"}');
+    }
   } else if (req.method === "POST" && req.url === "/api/results") {
     let body = "";
     req.on("data", (chunk) => (body += chunk));
@@ -265,27 +304,9 @@ const server = createServer((req, res) => {
         res.end('{"error":"invalid json"}');
       }
     });
-  } else if (req.method === "GET" && req.url === "/api/results") {
-    if (latestResults) {
-      res.writeHead(200, {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      });
-      res.end(JSON.stringify(latestResults));
-    } else {
-      res.writeHead(404, {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      });
-      res.end('{"error":"no results yet — open http://localhost:' + PORT + '/ to run measurements"}');
-    }
-  } else if (req.method === "OPTIONS") {
-    res.writeHead(204, {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST",
-      "Access-Control-Allow-Headers": "Content-Type",
-    });
-    res.end();
+  } else if (req.method === "GET" && req.url === "/") {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end(buildMeasurementPage(config));
   } else {
     res.writeHead(404);
     res.end("Not found");

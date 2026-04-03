@@ -211,9 +211,9 @@ body { display: flex; flex-direction: column; overflow: hidden; }
   </div>
 </div>
 
-<iframe id="measure-frame"></iframe>
+<script type="module">
+import { prepare, layout } from "https://esm.sh/@chenglou/pretext@0.0.4";
 
-<script>
 const RUNNER = "RUNNER_URL";
 const TARGET = "TARGET_URL";
 
@@ -221,6 +221,7 @@ let data = null;
 let activeFilter = "fail";
 let selectedIdx = null;
 let deviceIdx = 0;
+let fontsLoaded = false;
 
 const countsEl = document.getElementById("counts");
 const cardsEl = document.getElementById("cardsList");
@@ -231,39 +232,120 @@ const deviceLabelEl = document.getElementById("deviceLabel");
 const prevBtn = document.getElementById("prevDevice");
 const nextBtn = document.getElementById("nextDevice");
 const runBtn = document.getElementById("runBtn");
-const measureFrame = document.getElementById("measure-frame");
 
-// --- Generate Report: trigger pretext measurement ---
+// --- Load fonts + Google Fonts link on first config fetch ---
+async function ensureFonts(config) {
+  if (fontsLoaded) return;
+  if (config.googleFontsUrl) {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = config.googleFontsUrl;
+    document.head.appendChild(link);
+  }
+  const fontFaces = new Set();
+  for (const ck of config.checks) {
+    fontFaces.add(ck.fontWeight + ' 16px "' + ck.fontFamily + '"');
+  }
+  await Promise.all([...fontFaces].map(f => document.fonts.load(f)));
+  fontsLoaded = true;
+}
+
+// --- Run pretext measurement locally in the browser ---
+function runMeasurement(config) {
+  const { breakpoints, checks } = config;
+  const results = [];
+
+  for (const ck of checks) {
+    const lh = ck.lineHeight || 1.4;
+    const dsk = ck.desktopResolved;
+    const dskFontStr = ck.fontWeight + " " + dsk.fontSize + " " + ck.fontFamily;
+    const dskLh = parseFloat(dsk.fontSize) * lh;
+    const dskPrep = prepare(ck.text, dskFontStr);
+
+    let baselineLines;
+    if (ck.noWrap) {
+      baselineLines = 1;
+    } else {
+      const dskResult = layout(dskPrep, dsk.containerWidth, dskLh);
+      baselineLines = dskResult.lineCount;
+    }
+
+    const devices = [];
+    for (let i = 0; i < breakpoints.length; i++) {
+      const bp = breakpoints[i];
+      const r = ck.resolved[i];
+      const fontStr = ck.fontWeight + " " + r.fontSize + " " + ck.fontFamily;
+      const bpLh = parseFloat(r.fontSize) * lh;
+
+      let lc = 0, tw = 0, st = "PASS";
+      try {
+        const p = prepare(ck.text, fontStr);
+        if (ck.noWrap) {
+          const singleLine = layout(p, 99999, bpLh);
+          tw = Math.round(singleLine.width || 0);
+          lc = 1;
+          st = tw > r.containerWidth ? "FAIL" : tw > r.containerWidth * 0.9 ? "WARN" : "PASS";
+        } else {
+          const result = layout(p, r.containerWidth, bpLh);
+          lc = result.lineCount;
+          const drift = lc - baselineLines;
+          st = drift <= 0 ? "PASS" : drift === 1 ? "WARN" : "FAIL";
+        }
+      } catch (e) { st = "FAIL"; lc = -1; }
+
+      devices.push({
+        name: bp.name, width: bp.width, fontSize: r.fontSize,
+        containerWidth: r.containerWidth, lineCount: lc,
+        baselineLines, status: st, textWidth: tw, noWrap: !!ck.noWrap,
+      });
+    }
+
+    const worst = devices.some(d => d.status === "FAIL") ? "FAIL"
+      : devices.some(d => d.status === "WARN") ? "WARN" : "PASS";
+
+    results.push({
+      label: ck.label, text: ck.text, page: ck.page || "/",
+      fontFamily: ck.fontFamily, baselineLines, worst, devices,
+    });
+  }
+
+  results.sort((a, b) => ({ FAIL: 0, WARN: 1, PASS: 2 }[a.worst]) - ({ FAIL: 0, WARN: 1, PASS: 2 }[b.worst]));
+
+  const fc = results.filter(r => r.worst === "FAIL").length;
+  const wc = results.filter(r => r.worst === "WARN").length;
+  const pc = results.filter(r => r.worst === "PASS").length;
+
+  return {
+    summary: { fail: fc, warn: wc, pass: pc, total: results.length, breakpoints: breakpoints.length },
+    results,
+  };
+}
+
+// --- Generate Report ---
 runBtn.addEventListener("click", async () => {
   runBtn.textContent = "Measuring...";
   runBtn.classList.add("running");
 
-  // Open measurement page in hidden iframe — it runs pretext and posts results
-  measureFrame.src = "http://" + RUNNER + "/";
+  try {
+    const resp = await fetch("http://" + RUNNER + "/api/config");
+    const config = await resp.json();
+    await ensureFonts(config);
+    data = runMeasurement(config);
 
-  // Poll for fresh results
-  let attempts = 0;
-  const poll = setInterval(async () => {
-    attempts++;
-    try {
-      const resp = await fetch("http://" + RUNNER + "/api/results");
-      if (resp.ok) {
-        const newData = await resp.json();
-        if (newData && newData.summary) {
-          clearInterval(poll);
-          data = newData;
-          render();
-          runBtn.textContent = "Generate Report";
-          runBtn.classList.remove("running");
-        }
-      }
-    } catch {}
-    if (attempts > 30) {
-      clearInterval(poll);
-      runBtn.textContent = "Generate Report";
-      runBtn.classList.remove("running");
-    }
-  }, 500);
+    // Cache results on server too
+    fetch("http://" + RUNNER + "/api/results", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }).catch(() => {});
+
+    render();
+  } catch (e) {
+    countsEl.innerHTML = '<span style="color:var(--fail)">Error: ' + e.message + '</span>';
+  }
+
+  runBtn.textContent = "Generate Report";
+  runBtn.classList.remove("running");
 });
 
 // --- Filters ---
@@ -398,12 +480,21 @@ nextBtn.addEventListener("click", () => {
   if (selectedIdx !== null && deviceIdx < list[selectedIdx].devices.length - 1) { deviceIdx++; renderDetail(); }
 });
 
-// --- Initial load ---
+// --- Initial load: run measurement immediately ---
 (async () => {
   try {
-    const resp = await fetch("http://" + RUNNER + "/api/results");
-    if (resp.ok) { data = await resp.json(); render(); }
-  } catch {}
+    runBtn.textContent = "Measuring...";
+    runBtn.classList.add("running");
+    const resp = await fetch("http://" + RUNNER + "/api/config");
+    const config = await resp.json();
+    await ensureFonts(config);
+    data = runMeasurement(config);
+    render();
+  } catch (e) {
+    countsEl.innerHTML = '<span style="color:var(--fail)">Start pretext-check first (port ' + RUNNER.split(":")[1] + ')</span>';
+  }
+  runBtn.textContent = "Generate Report";
+  runBtn.classList.remove("running");
 })();
 </script>
 </body>
