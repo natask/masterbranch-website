@@ -339,6 +339,7 @@
 /* ---- Page-level flashlight background ---- */
 .flashlight-bg {
   position: relative;
+  --fl-intensity: 1;
 }
 
 .flashlight-bg::before {
@@ -349,12 +350,13 @@
   z-index: 0;
   background: radial-gradient(
     700px circle at var(--fl-x, -900px) var(--fl-y, -900px),
-    rgba(255, 245, 220, 0.12) 0%,
-    rgba(201, 165, 92, 0.08) 30%,
-    rgba(201, 165, 92, 0.03) 55%,
+    rgba(255, 245, 220, calc(0.12 * var(--fl-intensity, 1))) 0%,
+    rgba(201, 165, 92, calc(0.08 * var(--fl-intensity, 1))) 30%,
+    rgba(201, 165, 92, calc(0.03 * var(--fl-intensity, 1))) 55%,
     transparent 70%
   );
   mix-blend-mode: screen;
+  transition: opacity 0.35s ease;
 }
 
 /* ---- Project card — Delphi-style tilt + physical light ---- */
