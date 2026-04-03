@@ -97,7 +97,9 @@ body {
   font-size: 0.6875rem;
   font-family: var(--font-mono);
   font-weight: 500;
+  transition: opacity 0.15s ease;
 }
+.counts.updating { opacity: 0; }
 .counts span {
   display: flex; align-items: center; gap: 0.3rem;
   color: var(--text-muted);
@@ -461,6 +463,10 @@ body {
 .card:nth-child(9)  { animation-delay: 0.18s; }
 .card:nth-child(10) { animation-delay: 0.2s; }
 .card:nth-child(n+11) { animation-delay: 0.2s; }
+
+/* Smooth refresh — fade cards out/in instead of hard replace */
+.cards-panel.refreshing { opacity: 0; transition: opacity 0.08s ease; }
+.cards-panel.revealing  { opacity: 1; transition: opacity 0.15s ease 0.02s; }
 </style>
 </head>
 <body>
@@ -600,7 +606,7 @@ function setupTouchOverlay(overlayEl, frameEl, scale) {
       frameEl.contentWindow.scrollBy({
         left: e.deltaX / scale,
         top: e.deltaY / scale,
-        behavior: "instant",
+        behavior: "auto",
       });
     } catch {}
   });
@@ -705,7 +711,7 @@ function scrollCheckIntoView(check) {
     const match = findBestMatchElement(doc, check.text);
     if (!match) return false;
     const top = Math.max(0, match.getBoundingClientRect().top + frameEl.contentWindow.scrollY - 120);
-    frameEl.contentWindow.scrollTo({ top, behavior: "instant" });
+    frameEl.contentWindow.scrollTo({ top, behavior: "auto" });
     return true;
   } catch {
     return false;
@@ -856,9 +862,11 @@ function runMeasurement(config) {
   };
 }
 
-// --- Generate Report ---
+// --- Generate Report (smooth transition) ---
+let lastRenderedHash = null;
+
 runBtn.addEventListener("click", async () => {
-  runBtn.textContent = "Measuring...";
+  runBtn.textContent = "Measuring\u2026";
   runBtn.classList.add("running");
 
   try {
@@ -874,7 +882,7 @@ runBtn.addEventListener("click", async () => {
       body: JSON.stringify(data),
     }).catch(() => {});
 
-    render();
+    await renderSmooth();
   } catch (e) {
     countsEl.innerHTML = '<span style="color:var(--fail)">Error: ' + e.message + '</span>';
   }
@@ -900,17 +908,8 @@ function filtered() {
   return data.results.filter(r => r.worst === activeFilter.toUpperCase());
 }
 
-function render() {
-  if (!data) return;
-  const { summary } = data;
-
-  countsEl.innerHTML =
-    '<span><span class="dot fail"></span>' + summary.fail + '</span>' +
-    '<span><span class="dot warn"></span>' + summary.warn + '</span>' +
-    '<span><span class="dot pass"></span>' + summary.pass + '</span>';
-
-  const list = filtered();
-  cardsEl.innerHTML = list.map((r, i) => {
+function buildCardsHTML(list) {
+  return list.map((r, i) => {
     const failDevices = r.devices.filter(d => d.status !== "PASS").length;
     return '<div class="card' + (i === selectedIdx ? ' selected' : '') + '" data-idx="' + i + '">' +
       '<span class="card-badge ' + r.worst.toLowerCase() + '">' + r.worst + '</span>' +
@@ -921,7 +920,23 @@ function render() {
       '</div>' +
     '</div>';
   }).join("");
+}
 
+function dataHash() {
+  if (!data) return null;
+  return data.summary.fail + ":" + data.summary.warn + ":" + data.summary.pass + ":" + activeFilter;
+}
+
+function updateCounts() {
+  if (!data) return;
+  const { summary } = data;
+  countsEl.innerHTML =
+    '<span><span class="dot fail"></span>' + summary.fail + '</span>' +
+    '<span><span class="dot warn"></span>' + summary.warn + '</span>' +
+    '<span><span class="dot pass"></span>' + summary.pass + '</span>';
+}
+
+function wireCardClicks() {
   cardsEl.querySelectorAll(".card").forEach(card => {
     card.addEventListener("click", () => {
       selectedIdx = parseInt(card.dataset.idx);
@@ -930,19 +945,68 @@ function render() {
       renderDetail();
     });
   });
+}
+
+function updateEmptyState() {
+  viewportEl.innerHTML = '<div class="viewport-empty">Select a check to see<br/>how it renders on each device</div>';
+  deviceBarEl.innerHTML = "";
+  titleEl.textContent = "Select a check to preview";
+  deviceLabelEl.textContent = "";
+  prevBtn.disabled = true;
+  nextBtn.disabled = true;
+}
+
+// Instant render — for selection changes (no data change)
+function render() {
+  if (!data) return;
+  const hash = dataHash();
+  const list = filtered();
+
+  // If data/filter changed, rebuild cards
+  if (hash !== lastRenderedHash) {
+    updateCounts();
+    cardsEl.innerHTML = buildCardsHTML(list);
+    wireCardClicks();
+    lastRenderedHash = hash;
+  } else {
+    // Just update selection classes
+    cardsEl.querySelectorAll(".card").forEach((card, i) => {
+      card.classList.toggle("selected", i === selectedIdx);
+    });
+  }
 
   if (selectedIdx !== null) {
     syncSelectedCard();
     renderDetail();
+  } else {
+    updateEmptyState();
   }
-  else {
-    viewportEl.innerHTML = '<div class="viewport-empty">Select a check to see<br/>how it renders on each device</div>';
-    deviceBarEl.innerHTML = "";
-    titleEl.textContent = "Click a check to preview";
-    deviceLabelEl.textContent = "";
-    prevBtn.disabled = true;
-    nextBtn.disabled = true;
-  }
+}
+
+// Smooth render — for data refreshes (fade out, swap, fade in)
+function renderSmooth() {
+  return new Promise(resolve => {
+    // Fade out cards + counts
+    cardsEl.classList.add("refreshing");
+    cardsEl.classList.remove("revealing");
+    countsEl.classList.add("updating");
+
+    setTimeout(() => {
+      // Swap content while faded out
+      lastRenderedHash = null; // force rebuild
+      render();
+
+      // Fade back in
+      cardsEl.classList.remove("refreshing");
+      cardsEl.classList.add("revealing");
+      countsEl.classList.remove("updating");
+
+      setTimeout(() => {
+        cardsEl.classList.remove("revealing");
+        resolve();
+      }, 180);
+    }, 100);
+  });
 }
 
 function renderDetail() {
@@ -1036,7 +1100,7 @@ nextBtn.addEventListener("click", () => {
     const config = await resp.json();
     await ensureFonts(config);
     data = runMeasurement(config);
-    render();
+    await renderSmooth();
   } catch (e) {
     countsEl.innerHTML = '<span style="color:var(--fail)">Start pretext-check first (port ' + RUNNER.split(":")[1] + ')</span>';
   }
