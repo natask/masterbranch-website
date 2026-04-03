@@ -271,20 +271,38 @@ body {
 .canvas-header {
   padding: 0.75rem 1.25rem;
   border-bottom: 1px solid var(--border);
-  display: flex; align-items: center; gap: 0.75rem;
+  display: flex; align-items: flex-start; gap: 0.75rem;
   background: var(--surface);
   min-height: 46px;
+}
+.canvas-heading {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 .canvas-title {
   font-size: 0.875rem;
   font-weight: 600;
-  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   letter-spacing: -0.015em;
   color: var(--text);
 }
+.canvas-meta {
+  min-height: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.canvas-meta .fail { color: var(--fail); }
+.canvas-meta .warn { color: var(--warn); }
+.canvas-meta .pass { color: var(--pass); }
 .canvas-nav {
   display: flex; align-items: center; gap: 0.5rem;
   font-size: 0.6875rem;
@@ -480,24 +498,27 @@ body {
 </div>
 
 <div class="filters" id="filters">
-  <button class="on" data-filter="fail">fail</button>
+  <button data-filter="fail">fail</button>
   <button data-filter="warn">warn</button>
   <button data-filter="pass">pass</button>
-  <button data-filter="all">all</button>
+  <button class="on" data-filter="all">all</button>
 </div>
 
 <div class="main">
   <div class="cards-panel" id="cardsList"></div>
 
-  <div class="canvas-panel">
-    <div class="canvas-header">
-      <div class="canvas-title" id="canvasTitle">Select a check to preview</div>
-      <div class="canvas-nav">
-        <button id="prevDevice" disabled>&larr;</button>
-        <span id="deviceLabel"></span>
-        <button id="nextDevice" disabled>&rarr;</button>
+    <div class="canvas-panel">
+      <div class="canvas-header">
+      <div class="canvas-heading">
+        <div class="canvas-title" id="canvasTitle">Select a check to preview</div>
+        <div class="canvas-meta" id="canvasMeta"></div>
       </div>
-    </div>
+        <div class="canvas-nav">
+          <button id="prevDevice" disabled>&larr;</button>
+          <span id="deviceLabel"></span>
+          <button id="nextDevice" disabled>&rarr;</button>
+        </div>
+      </div>
     <div class="canvas-viewport" id="viewport">
       <div class="viewport-empty">Select a check to see<br/>how it renders on each device</div>
     </div>
@@ -512,7 +533,7 @@ const RUNNER = "RUNNER_URL";
 const TARGET = "TARGET_URL";
 
 let data = null;
-let activeFilter = "fail";
+let activeFilter = "all";
 let selectedIdx = null;
 let deviceIdx = 0;
 let fontsLoaded = false;
@@ -650,9 +671,13 @@ const titleEl = document.getElementById("canvasTitle");
 const viewportEl = document.getElementById("viewport");
 const deviceBarEl = document.getElementById("deviceBar");
 const deviceLabelEl = document.getElementById("deviceLabel");
+const canvasMetaEl = document.getElementById("canvasMeta");
 const prevBtn = document.getElementById("prevDevice");
 const nextBtn = document.getElementById("nextDevice");
 const runBtn = document.getElementById("runBtn");
+const HIGHLIGHT_STYLE_ID = "pretext-highlight-style";
+const HIGHLIGHT_CLASS = "pretext-highlight-target";
+let highlightedEl = null;
 
 function selectionKey(check) {
   return check.page + "::" + check.label + "::" + check.text;
@@ -684,6 +709,21 @@ function restoreScrollPosition(page) {
   }
 }
 
+function ensureHighlightStyles(doc) {
+  if (doc.getElementById(HIGHLIGHT_STYLE_ID)) return;
+  const style = doc.createElement("style");
+  style.id = HIGHLIGHT_STYLE_ID;
+  style.textContent =
+    "." + HIGHLIGHT_CLASS + "{" +
+      "outline:3px solid rgba(251,113,133,0.92)!important;" +
+      "outline-offset:4px!important;" +
+      "box-shadow:0 0 0 9999px rgba(251,113,133,0.08),0 0 0 8px rgba(251,113,133,0.18)!important;" +
+      "border-radius:8px!important;" +
+      "transition:box-shadow 120ms ease, outline-color 120ms ease;" +
+    "}";
+  doc.head.appendChild(style);
+}
+
 function findBestMatchElement(doc, targetText) {
   const wanted = normalizeText(targetText);
   if (!wanted) return null;
@@ -703,13 +743,46 @@ function findBestMatchElement(doc, targetText) {
   return partial;
 }
 
+function findCheckElement(doc, check) {
+  if (check.selector) {
+    try {
+      const selected = doc.querySelector(check.selector);
+      if (selected) return selected;
+    } catch {}
+  }
+  return findBestMatchElement(doc, check.text);
+}
+
+function clearHighlightedCheck() {
+  if (highlightedEl) highlightedEl.classList.remove(HIGHLIGHT_CLASS);
+  highlightedEl = null;
+}
+
+function highlightCheckElement(check) {
+  if (!frameEl) return false;
+  try {
+    const doc = frameEl.contentDocument;
+    if (!doc?.body) return false;
+    ensureHighlightStyles(doc);
+    clearHighlightedCheck();
+    const match = findCheckElement(doc, check);
+    if (!match) return false;
+    match.classList.add(HIGHLIGHT_CLASS);
+    highlightedEl = match;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function scrollCheckIntoView(check) {
   if (!frameEl) return false;
   try {
     const doc = frameEl.contentDocument;
     if (!doc?.body) return false;
-    const match = findBestMatchElement(doc, check.text);
+    const match = findCheckElement(doc, check);
     if (!match) return false;
+    highlightCheckElement(check);
     const top = Math.max(0, match.getBoundingClientRect().top + frameEl.contentWindow.scrollY - 120);
     frameEl.contentWindow.scrollTo({ top, behavior: "auto" });
     return true;
@@ -773,7 +846,6 @@ function updateViewportFrame(check, dev) {
 
   return { devInputType };
 }
-
 // --- Load fonts + Google Fonts link on first config fetch ---
 async function ensureFonts(config) {
   if (fontsLoaded) return;
@@ -791,6 +863,72 @@ async function ensureFonts(config) {
   fontsLoaded = true;
 }
 
+function classifyDeviceResult(check, metrics) {
+  const overflowRatio = metrics.containerWidth > 0
+    ? metrics.textWidth / metrics.containerWidth
+    : Number.POSITIVE_INFINITY;
+
+  if (metrics.error) {
+    return {
+      status: "FAIL",
+      reason: "measurement-error",
+      details: "Layout measurement threw.",
+    };
+  }
+
+  if (!metrics.hasText) {
+    return {
+      status: "PASS",
+      reason: "empty-text",
+      details: "No text configured for this breakpoint.",
+    };
+  }
+
+  if (check.noWrap) {
+    if (metrics.textWidth > metrics.containerWidth) {
+      return {
+        status: check.overflowStatus || "FAIL",
+        reason: "truncation",
+        details: "Single-line text exceeds its available width.",
+        overflowRatio,
+      };
+    }
+
+    if (overflowRatio > (check.warnOverflowRatio || 0.9)) {
+      return {
+        status: "WARN",
+        reason: "near-truncation",
+        details: "Single-line text is close to clipping.",
+        overflowRatio,
+      };
+    }
+
+    return {
+      status: "PASS",
+      reason: "fits",
+      details: "Single-line text fits its available width.",
+      overflowRatio,
+    };
+  }
+
+  const drift = metrics.lineCount - metrics.baselineLines;
+  if (drift > 0) {
+    return {
+      status: check.wrapStatus || "WARN",
+      reason: "line-wrap-drift",
+      details: `Text uses ${drift} more line${drift === 1 ? "" : "s"} than desktop.`,
+      lineDrift: drift,
+    };
+  }
+
+  return {
+    status: "PASS",
+    reason: "baseline-match",
+    details: "Text matches or improves on the desktop line count.",
+    lineDrift: drift,
+  };
+}
+
 // --- Run pretext measurement locally in the browser ---
 function runMeasurement(config) {
   const { breakpoints, checks } = config;
@@ -799,14 +937,17 @@ function runMeasurement(config) {
   for (const ck of checks) {
     const lh = ck.lineHeight || 1.4;
     const dsk = ck.desktopResolved;
+    const baselineText = dsk.text || "";
     const dskFontStr = ck.fontWeight + " " + dsk.fontSize + " " + ck.fontFamily;
     const dskLh = parseFloat(dsk.fontSize) * lh;
-    const dskPrep = prepare(ck.text, dskFontStr);
 
     let baselineLines;
-    if (ck.noWrap) {
+    if (!baselineText) {
+      baselineLines = 0;
+    } else if (ck.noWrap) {
       baselineLines = 1;
     } else {
+      const dskPrep = prepare(baselineText, dskFontStr);
       const dskResult = layout(dskPrep, dsk.containerWidth, dskLh);
       baselineLines = dskResult.lineCount;
     }
@@ -815,29 +956,49 @@ function runMeasurement(config) {
     for (let i = 0; i < breakpoints.length; i++) {
       const bp = breakpoints[i];
       const r = ck.resolved[i];
+      const text = r.text || "";
       const fontStr = ck.fontWeight + " " + r.fontSize + " " + ck.fontFamily;
       const bpLh = parseFloat(r.fontSize) * lh;
 
-      let lc = 0, tw = 0, st = "PASS";
+      let lc = 0, tw = 0;
+      let classification;
       try {
-        const p = prepare(ck.text, fontStr);
-        if (ck.noWrap) {
-          const singleLine = layout(p, 99999, bpLh);
-          tw = Math.round(singleLine.width || 0);
-          lc = 1;
-          st = tw > r.containerWidth ? "FAIL" : tw > r.containerWidth * 0.9 ? "WARN" : "PASS";
-        } else {
-          const result = layout(p, r.containerWidth, bpLh);
-          lc = result.lineCount;
-          const drift = lc - baselineLines;
-          st = drift <= 0 ? "PASS" : drift === 1 ? "WARN" : "FAIL";
+        if (text) {
+          const p = prepare(text, fontStr);
+          if (ck.noWrap) {
+            const singleLine = layout(p, 99999, bpLh);
+            tw = Math.round(singleLine.width || 0);
+            lc = 1;
+          } else {
+            const result = layout(p, r.containerWidth, bpLh);
+            lc = result.lineCount;
+          }
         }
-      } catch (e) { st = "FAIL"; lc = -1; }
+        classification = classifyDeviceResult(ck, {
+          hasText: !!text,
+          baselineLines,
+          containerWidth: r.containerWidth,
+          lineCount: lc,
+          textWidth: tw,
+        });
+      } catch (e) {
+        lc = -1;
+        classification = classifyDeviceResult(ck, {
+          hasText: !!text,
+          baselineLines,
+          containerWidth: r.containerWidth,
+          lineCount: lc,
+          textWidth: tw,
+          error: e,
+        });
+      }
 
       devices.push({
         name: bp.name, width: bp.width, fontSize: r.fontSize,
         containerWidth: r.containerWidth, lineCount: lc,
-        baselineLines, status: st, textWidth: tw, noWrap: !!ck.noWrap,
+        baselineLines, status: classification.status, reason: classification.reason,
+        details: classification.details, lineDrift: classification.lineDrift ?? null,
+        overflowRatio: classification.overflowRatio ?? null, textWidth: tw, text, noWrap: !!ck.noWrap,
       });
     }
 
@@ -845,7 +1006,7 @@ function runMeasurement(config) {
       : devices.some(d => d.status === "WARN") ? "WARN" : "PASS";
 
     results.push({
-      label: ck.label, text: ck.text, page: ck.page || "/",
+      label: ck.label, text: ck.text, page: ck.page || "/", selector: ck.selector || null,
       fontFamily: ck.fontFamily, baselineLines, worst, devices,
     });
   }
@@ -911,12 +1072,13 @@ function filtered() {
 function buildCardsHTML(list) {
   return list.map((r, i) => {
     const failDevices = r.devices.filter(d => d.status !== "PASS").length;
+    const leadReason = r.devices.find(d => d.status !== "PASS")?.reason || "ok";
     return '<div class="card' + (i === selectedIdx ? ' selected' : '') + '" data-idx="' + i + '">' +
       '<span class="card-badge ' + r.worst.toLowerCase() + '">' + r.worst + '</span>' +
       '<div class="card-info">' +
         '<div class="card-label">' + r.label + '</div>' +
         '<div class="card-text">' + r.text + '</div>' +
-        '<div class="card-meta">' + r.page + ' &middot; ' + failDevices + '/' + r.devices.length + ' devices</div>' +
+        '<div class="card-meta">' + r.page + ' &middot; ' + failDevices + '/' + r.devices.length + ' devices &middot; ' + leadReason + '</div>' +
       '</div>' +
     '</div>';
   }).join("");
@@ -951,9 +1113,33 @@ function updateEmptyState() {
   viewportEl.innerHTML = '<div class="viewport-empty">Select a check to see<br/>how it renders on each device</div>';
   deviceBarEl.innerHTML = "";
   titleEl.textContent = "Select a check to preview";
+  canvasMetaEl.textContent = "";
   deviceLabelEl.textContent = "";
   prevBtn.disabled = true;
   nextBtn.disabled = true;
+  clearHighlightedCheck();
+}
+
+function metricSummary(check, dev) {
+  const status = dev.status.toLowerCase();
+  const source = check.selector ? "selector" : "text match";
+  if (dev.noWrap) {
+    return (
+      '<span class="' + status + '">' + dev.status + "</span> " +
+      "&middot; width " + dev.textWidth + "px in " + dev.containerWidth + "px" +
+      " &middot; " + dev.reason +
+      " &middot; " + source
+    );
+  }
+  const delta = dev.lineCount - dev.baselineLines;
+  const drift = delta > 0 ? "+" + delta : String(delta);
+  return (
+    '<span class="' + status + '">' + dev.status + "</span> " +
+    "&middot; " + dev.lineCount + " lines vs " + dev.baselineLines + " baseline" +
+    " &middot; drift " + drift +
+    " &middot; " + dev.reason +
+    " &middot; " + source
+  );
 }
 
 // Instant render — for selection changes (no data change)
@@ -1021,6 +1207,7 @@ function renderDetail() {
   const dev = check.devices[deviceIdx];
   prevBtn.disabled = deviceIdx === 0;
   nextBtn.disabled = deviceIdx === check.devices.length - 1;
+  canvasMetaEl.innerHTML = metricSummary(check, dev);
   const devInputType = inputTypeForWidth(dev.width);
   deviceLabelEl.innerHTML = dev.name + " (" + dev.width + "px)" +
     '<span class="device-type-badge ' + devInputType + '">' +
@@ -1036,13 +1223,17 @@ function renderDetail() {
     currentFramePage = check.page;
     currentCheckKey = nextSelectionKey;
     frameEl.onload = () => {
+      highlightCheckElement(check);
       const restored = restoreScrollPosition(check.page);
       if (!restored || checkChanged) scrollCheckIntoView(check);
     };
     frameEl.src = TARGET + check.page;
   } else if (checkChanged) {
     currentCheckKey = nextSelectionKey;
+    highlightCheckElement(check);
     if (!scrollCheckIntoView(check)) restoreScrollPosition(check.page);
+  } else {
+    highlightCheckElement(check);
   }
 
   // Device bar
