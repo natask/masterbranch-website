@@ -1,0 +1,595 @@
+{
+  "project": "masterbranch",
+  "googleFontsUrl": "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Cinzel:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap",
+  "pages": ["/", "/about", "/login", "/dashboard", "/projects/new", "/branches/new"],
+  "breakpoints": [
+    { "name": "iPhone SE",       "width": 375, "rootFontSize": "18px" },
+    { "name": "Android mid",     "width": 412, "rootFontSize": "18px" },
+    { "name": "iPhone Pro Max",  "width": 430, "rootFontSize": "18px" },
+    { "name": "Tablet portrait", "width": 768, "rootFontSize": "22px" },
+    { "name": "Tablet landscape","width": 1024,"rootFontSize": "28px" },
+    { "name": "Laptop 13\"",     "width": 1280,"rootFontSize": "28px" },
+    { "name": "Laptop 14\"",     "width": 1440,"rootFontSize": "28px" },
+    { "name": "Laptop 16\"",     "width": 1536,"rootFontSize": "28px" },
+    { "name": "Desktop",         "width": 1920,"rootFontSize": "28px" }
+  ],
+  "checks": [
+    {
+      "label": "/ Hero — The Master Branch",
+      "text": "The Master Branch",
+      "page": "/",
+      "fontFamily": "Cinzel",
+      "fontWeight": "700",
+      "fontSize": "67.5px",
+      "lineHeight": 74,
+      "maxLines": 2,
+      "horizontalPadding": 48,
+      "responsive": [
+        { "minWidth": 0,    "fontSize": "67.5px" },
+        { "minWidth": 768,  "fontSize": "99px" },
+        { "minWidth": 1024, "fontSize": "168px" }
+      ]
+    },
+    {
+      "label": "/ Hero subheading",
+      "text": "Build something you will use.",
+      "page": "/",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "400",
+      "fontSize": "20.25px",
+      "lineHeight": 28,
+      "maxLines": 1,
+      "horizontalPadding": 48,
+      "responsive": [
+        { "minWidth": 0,    "fontSize": "20.25px" },
+        { "minWidth": 768,  "fontSize": "27.5px" },
+        { "minWidth": 1024, "fontSize": "35px" }
+      ]
+    },
+    {
+      "label": "/ Location tag — San Francisco",
+      "text": "San Francisco",
+      "page": "/",
+      "fontFamily": "Cinzel",
+      "fontWeight": "500",
+      "fontSize": "13.5px",
+      "lineHeight": 20,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "/ Manifesto heading (desktop)",
+      "text": "In building, you learn how to build.",
+      "page": "/",
+      "fontFamily": "Cinzel",
+      "fontWeight": "600",
+      "fontSize": "33.75px",
+      "lineHeight": 40,
+      "maxLines": 2,
+      "horizontalPadding": 48,
+      "responsive": [
+        { "minWidth": 0,    "fontSize": "33.75px" },
+        { "minWidth": 768,  "fontSize": "49.5px" },
+        { "minWidth": 1024, "fontSize": "63px" }
+      ]
+    },
+    {
+      "label": "/ Manifesto heading (mobile)",
+      "text": "Build. Learn. Repeat.",
+      "page": "/",
+      "fontFamily": "Cinzel",
+      "fontWeight": "600",
+      "fontSize": "33.75px",
+      "lineHeight": 40,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "/ Manifesto body 1",
+      "text": "Not by watching. Not by reading. Sit down, run the agents, hit walls, and push to a real deploy.",
+      "page": "/",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "400",
+      "fontSize": "20.25px",
+      "lineHeight": 30,
+      "maxLines": 4,
+      "horizontalPadding": 48,
+      "responsive": [
+        { "minWidth": 0,    "fontSize": "20.25px" },
+        { "minWidth": 768,  "fontSize": "27.5px" }
+      ]
+    },
+    {
+      "label": "/ Manifesto body 2",
+      "text": "If software annoys you, clone it. If a workflow is broken, fix it. If a tool should exist, make it real.",
+      "page": "/",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "400",
+      "fontSize": "20.25px",
+      "lineHeight": 30,
+      "maxLines": 4,
+      "horizontalPadding": 48,
+      "responsive": [
+        { "minWidth": 0,    "fontSize": "20.25px" },
+        { "minWidth": 768,  "fontSize": "27.5px" }
+      ]
+    },
+    {
+      "label": "/ Manifesto body 3",
+      "text": "If you will not use it in two weeks, it was a hack, not a build.",
+      "page": "/",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "400",
+      "fontSize": "20.25px",
+      "lineHeight": 30,
+      "maxLines": 3,
+      "horizontalPadding": 48,
+      "responsive": [
+        { "minWidth": 0,    "fontSize": "20.25px" },
+        { "minWidth": 768,  "fontSize": "27.5px" }
+      ]
+    },
+    {
+      "label": "/ Manifesto body 4",
+      "text": "There are people who claim they have reached it: autonomous agents, minimal input, ideas turning into software. We get there by shipping.",
+      "page": "/",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "400",
+      "fontSize": "20.25px",
+      "lineHeight": 30,
+      "maxLines": 5,
+      "horizontalPadding": 48,
+      "responsive": [
+        { "minWidth": 0,    "fontSize": "20.25px" },
+        { "minWidth": 768,  "fontSize": "27.5px" }
+      ]
+    },
+    {
+      "label": "/ Cinzel callout",
+      "text": "No one hands you the system. You build it yourself.",
+      "page": "/",
+      "fontFamily": "Cinzel",
+      "fontWeight": "500",
+      "fontSize": "22.5px",
+      "lineHeight": 30,
+      "maxLines": 2,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "/ Schedule heading (desktop)",
+      "text": "Every day. Four hours.",
+      "page": "/",
+      "fontFamily": "Cinzel",
+      "fontWeight": "600",
+      "fontSize": "33.75px",
+      "lineHeight": 40,
+      "maxLines": 1,
+      "horizontalPadding": 48,
+      "responsive": [
+        { "minWidth": 0,    "fontSize": "33.75px" },
+        { "minWidth": 768,  "fontSize": "49.5px" }
+      ]
+    },
+    {
+      "label": "/ No Sponsors",
+      "text": "No Sponsors",
+      "page": "/",
+      "fontFamily": "Cinzel",
+      "fontWeight": "600",
+      "fontSize": "20.25px",
+      "lineHeight": 28,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "/ No BS",
+      "text": "No BS",
+      "page": "/",
+      "fontFamily": "Cinzel",
+      "fontWeight": "600",
+      "fontSize": "20.25px",
+      "lineHeight": 28,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "/ Build build build",
+      "text": "Build build build.",
+      "page": "/",
+      "fontFamily": "Cinzel",
+      "fontWeight": "600",
+      "fontSize": "27px",
+      "lineHeight": 34,
+      "maxLines": 1,
+      "horizontalPadding": 48,
+      "responsive": [
+        { "minWidth": 0,    "fontSize": "27px" },
+        { "minWidth": 768,  "fontSize": "41.25px" }
+      ]
+    },
+    {
+      "label": "/ Footer — THE MASTER BRANCH",
+      "text": "THE MASTER BRANCH",
+      "page": "/",
+      "fontFamily": "Cinzel",
+      "fontWeight": "700",
+      "fontSize": "160px",
+      "lineHeight": 141,
+      "maxLines": 1,
+      "horizontalPadding": 0,
+      "noWrap": true,
+      "responsive": [
+        { "minWidth": 0,    "fontSize": "33.75px" },
+        { "minWidth": 412,  "fontSize": "37.08px" },
+        { "minWidth": 430,  "fontSize": "38.7px" },
+        { "minWidth": 768,  "fontSize": "69.12px" },
+        { "minWidth": 1024, "fontSize": "92.16px" },
+        { "minWidth": 1280, "fontSize": "115.2px" },
+        { "minWidth": 1440, "fontSize": "129.6px" },
+        { "minWidth": 1536, "fontSize": "138.24px" },
+        { "minWidth": 1920, "fontSize": "160px" }
+      ]
+    },
+    {
+      "label": "/ CTA — Join",
+      "text": "Join",
+      "page": "/",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "600",
+      "fontSize": "15.75px",
+      "lineHeight": 22,
+      "maxLines": 1,
+      "horizontalPadding": 64
+    },
+    {
+      "label": "/about Hero — The Master Branch",
+      "text": "The Master Branch",
+      "page": "/about",
+      "fontFamily": "Cinzel",
+      "fontWeight": "700",
+      "fontSize": "33.75px",
+      "lineHeight": 40,
+      "maxLines": 2,
+      "horizontalPadding": 40,
+      "responsive": [
+        { "minWidth": 0,    "fontSize": "33.75px" },
+        { "minWidth": 640,  "fontSize": "55px" },
+        { "minWidth": 768,  "fontSize": "82.5px" }
+      ]
+    },
+    {
+      "label": "/about Subheading (desktop)",
+      "text": "Build software you will still use two weeks from now.",
+      "page": "/about",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "400",
+      "fontSize": "18px",
+      "lineHeight": 26,
+      "maxLines": 2,
+      "horizontalPadding": 40,
+      "responsive": [
+        { "minWidth": 0,    "fontSize": "18px" },
+        { "minWidth": 640,  "fontSize": "19.25px" }
+      ]
+    },
+    {
+      "label": "/about Body — Master Branch is a build club",
+      "text": "Master Branch is a build club in San Francisco for engineers who want to command AI, not just talk about it.",
+      "page": "/about",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "400",
+      "fontSize": "18px",
+      "lineHeight": 26,
+      "maxLines": 5,
+      "horizontalPadding": 40
+    },
+    {
+      "label": "/about Build vs Hack heading",
+      "text": "Build vs Hack",
+      "page": "/about",
+      "fontFamily": "Cinzel",
+      "fontWeight": "400",
+      "fontSize": "22.5px",
+      "lineHeight": 30,
+      "maxLines": 1,
+      "horizontalPadding": 40
+    },
+    {
+      "label": "/about Build vs Hack body",
+      "text": "Hacks are fun. Builds last. If you are not using it in two weeks, it was a hack.",
+      "page": "/about",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "400",
+      "fontSize": "18px",
+      "lineHeight": 26,
+      "maxLines": 4,
+      "horizontalPadding": 40
+    },
+    {
+      "label": "/about Why this exists heading",
+      "text": "Why this exists",
+      "page": "/about",
+      "fontFamily": "Cinzel",
+      "fontWeight": "400",
+      "fontSize": "22.5px",
+      "lineHeight": 30,
+      "maxLines": 1,
+      "horizontalPadding": 40
+    },
+    {
+      "label": "/about Why body",
+      "text": "Hackathons can be exciting, but they reset every weekend: new teams, new context, weak continuity.",
+      "page": "/about",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "400",
+      "fontSize": "18px",
+      "lineHeight": 26,
+      "maxLines": 4,
+      "horizontalPadding": 40
+    },
+    {
+      "label": "/about Cinzel callout (desktop)",
+      "text": "No one is going to hand you the system. You have to build it yourself.",
+      "page": "/about",
+      "fontFamily": "Cinzel",
+      "fontWeight": "400",
+      "fontSize": "18px",
+      "lineHeight": 26,
+      "maxLines": 3,
+      "horizontalPadding": 40
+    },
+    {
+      "label": "/login — Welcome",
+      "text": "Welcome",
+      "page": "/login",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "700",
+      "fontSize": "81px",
+      "lineHeight": 88,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "/login — Sign in with GitHub",
+      "text": "Sign in with GitHub",
+      "page": "/login",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "400",
+      "fontSize": "15.75px",
+      "lineHeight": 22,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "/dashboard — Welcome back",
+      "text": "Welcome back",
+      "page": "/dashboard",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "700",
+      "fontSize": "40.5px",
+      "lineHeight": 48,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "/dashboard — Share what you've built",
+      "text": "Share what you've built",
+      "page": "/dashboard",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "700",
+      "fontSize": "22.5px",
+      "lineHeight": 30,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "/dashboard — Upload description",
+      "text": "Upload a project, link your GitHub repo, and add the traces behind it.",
+      "page": "/dashboard",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "400",
+      "fontSize": "15.75px",
+      "lineHeight": 22,
+      "maxLines": 3,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "/dashboard — Your Projects heading",
+      "text": "Your Projects",
+      "page": "/dashboard",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "700",
+      "fontSize": "27px",
+      "lineHeight": 34,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "/dashboard — Your Branches heading",
+      "text": "Your Branches",
+      "page": "/dashboard",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "700",
+      "fontSize": "27px",
+      "lineHeight": 34,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "/dashboard — Fork description",
+      "text": "Join a branch or create your own community fork.",
+      "page": "/dashboard",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "400",
+      "fontSize": "15.75px",
+      "lineHeight": 22,
+      "maxLines": 2,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "/projects/new — New Project heading",
+      "text": "New Project",
+      "page": "/projects/new",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "700",
+      "fontSize": "33.75px",
+      "lineHeight": 40,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "/projects/new — description",
+      "text": "Share what you've been building.",
+      "page": "/projects/new",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "400",
+      "fontSize": "15.75px",
+      "lineHeight": 22,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "/branches/new — Create a Branch",
+      "text": "Create a Branch",
+      "page": "/branches/new",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "700",
+      "fontSize": "33.75px",
+      "lineHeight": 40,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "/branches/new — description",
+      "text": "Fork the master branch. Your branch gets its own subdomain and community.",
+      "page": "/branches/new",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "400",
+      "fontSize": "15.75px",
+      "lineHeight": 22,
+      "maxLines": 3,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "Explore Projects heading",
+      "text": "Explore Projects",
+      "page": "/",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "700",
+      "fontSize": "33.75px",
+      "lineHeight": 40,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "Card title — long project name",
+      "text": "Autonomous Delivery Drone Platform",
+      "page": "/",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "600",
+      "fontSize": "20.25px",
+      "lineHeight": 28,
+      "maxLines": 2,
+      "horizontalPadding": 32
+    },
+    {
+      "label": "Modal — Upload Project heading",
+      "text": "Upload Project",
+      "page": "/dashboard",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "700",
+      "fontSize": "27px",
+      "lineHeight": 34,
+      "maxLines": 1,
+      "horizontalPadding": 64
+    },
+    {
+      "label": "Modal — New Project heading",
+      "text": "New Project",
+      "page": "/dashboard",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "700",
+      "fontSize": "27px",
+      "lineHeight": 34,
+      "maxLines": 1,
+      "horizontalPadding": 64
+    },
+    {
+      "label": "Modal — Create a Branch heading",
+      "text": "Create a Branch",
+      "page": "/dashboard",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "700",
+      "fontSize": "27px",
+      "lineHeight": 34,
+      "maxLines": 1,
+      "horizontalPadding": 64
+    },
+    {
+      "label": "Modal — Fork description",
+      "text": "Fork the master branch. Your branch gets its own subdomain and community.",
+      "page": "/dashboard",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "400",
+      "fontSize": "18px",
+      "lineHeight": 26,
+      "maxLines": 3,
+      "horizontalPadding": 64
+    },
+    {
+      "label": "/about — Build build build",
+      "text": "Build build build.",
+      "page": "/about",
+      "fontFamily": "Cinzel",
+      "fontWeight": "400",
+      "fontSize": "18px",
+      "lineHeight": 26,
+      "maxLines": 1,
+      "horizontalPadding": 40
+    },
+    {
+      "label": "Branch not found heading",
+      "text": "Branch not found",
+      "page": "/branch",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "700",
+      "fontSize": "33.75px",
+      "lineHeight": 40,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "Application Submitted heading",
+      "text": "Application Submitted",
+      "page": "/branch",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "700",
+      "fontSize": "27px",
+      "lineHeight": 34,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "Edit Project heading",
+      "text": "Edit Project",
+      "page": "/projects",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "700",
+      "fontSize": "33.75px",
+      "lineHeight": 40,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    },
+    {
+      "label": "Pending Applications heading",
+      "text": "Pending Applications",
+      "page": "/branch",
+      "fontFamily": "Cormorant Garamond",
+      "fontWeight": "700",
+      "fontSize": "22.5px",
+      "lineHeight": 30,
+      "maxLines": 1,
+      "horizontalPadding": 48
+    }
+  ]
+}
