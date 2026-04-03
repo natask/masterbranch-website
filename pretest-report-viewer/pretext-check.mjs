@@ -27,8 +27,12 @@ const args = Object.fromEntries(
   })
 );
 const configPath = args.config ? resolve(args.config) : resolve(__dirname, "pretext-check-config.json");
-const config = JSON.parse(readFileSync(configPath, "utf-8"));
+let config = JSON.parse(readFileSync(configPath, "utf-8"));
 const cliMode = args.cli === "true";
+
+function reloadConfig() {
+  config = JSON.parse(readFileSync(configPath, "utf-8"));
+}
 
 // --- Test logic ---
 function estimateWidth(text, fontSize, fontFamily) {
@@ -45,43 +49,55 @@ function estimateWidth(text, fontSize, fontFamily) {
   return Math.round(w);
 }
 
+function resolveFont(check, bpWidth) {
+  let fs = check.fontSize;
+  if (check.responsive) {
+    for (const o of check.responsive) {
+      if (bpWidth >= o.minWidth) fs = o.fontSize;
+    }
+  }
+  return fs;
+}
+
+function measureAtBreakpoint(check, bp) {
+  const fs = resolveFont(check, bp.width);
+  const cw = bp.width - (check.horizontalPadding || 48);
+  const tw = estimateWidth(check.text, fs, check.fontFamily);
+  const lc = check.noWrap ? 1 : Math.ceil(tw / cw);
+  return { fs, cw, tw, lc };
+}
+
 function runTests() {
   const results = [];
+  const desktopBp = config.breakpoints[config.breakpoints.length - 1];
 
   for (const check of config.checks) {
+    // Desktop is the baseline — derive maxLines from it
+    const desktop = measureAtBreakpoint(check, desktopBp);
+    const baselineLines = check.maxLines || desktop.lc;
+
     const devs = [];
 
     for (const bp of config.breakpoints) {
-      let fs = check.fontSize;
-      if (check.responsive) {
-        for (const o of check.responsive) {
-          if (bp.width >= o.minWidth) fs = o.fontSize;
-        }
-      }
-
-      const cw = bp.width - (check.horizontalPadding || 48);
-      let st, lc, tw = 0;
+      const m = measureAtBreakpoint(check, bp);
+      let st;
 
       if (check.noWrap) {
-        tw = estimateWidth(check.text, fs, check.fontFamily);
-        lc = 1;
-        st = tw > cw ? "FAIL" : tw > cw * 0.9 ? "WARN" : "PASS";
+        st = m.tw > m.cw ? "FAIL" : m.tw > m.cw * 0.9 ? "WARN" : "PASS";
       } else {
-        const lineW = estimateWidth(check.text, fs, check.fontFamily);
-        lc = Math.ceil(lineW / cw);
-        const ml = check.maxLines || 1;
-        st = lc <= ml ? "PASS" : lc <= ml + 1 ? "WARN" : "FAIL";
+        const drift = m.lc - baselineLines;
+        st = drift <= 0 ? "PASS" : drift === 1 ? "WARN" : "FAIL";
       }
 
       devs.push({
         name: bp.name,
         width: bp.width,
-        fontSize: fs,
-        containerWidth: cw,
-        lineCount: lc,
-        maxLines: check.maxLines || 1,
+        fontSize: m.fs,
+        containerWidth: m.cw,
+        lineCount: m.lc,
+        baselineLines,
         status: st,
-        textWidth: tw,
+        textWidth: m.tw,
         noWrap: !!check.noWrap,
       });
     }
@@ -98,6 +114,7 @@ function runTests() {
       page: check.page || "/",
       fontFamily: check.fontFamily,
       fontSize: check.fontSize,
+      baselineLines,
       worst,
       devices: devs,
     });
@@ -145,6 +162,7 @@ if (cliMode) {
 const PORT = parseInt(args.port || "4444");
 const server = createServer((req, res) => {
   if (req.url === "/api/results") {
+    reloadConfig();
     const results = runTests();
     const output = outputResults(results);
     res.writeHead(200, { "Content-Type": "application/json" });
