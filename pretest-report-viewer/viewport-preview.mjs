@@ -6,12 +6,14 @@
  * every browser refresh — edit the HTML, hit refresh, see changes.
  *
  * Auto-launches pretext-check if it isn't already running.
+ * Also auto-launches target app if it isn't already running.
  *
  * Usage:
  *   node viewport-preview.mjs                              # serve on :4445
  *   node viewport-preview.mjs --check-runner=localhost:4444 # custom runner
  *   node viewport-preview.mjs --target=localhost:3000       # custom app target
  *   node viewport-preview.mjs --no-runner                   # skip auto-launching runner
+ *   node viewport-preview.mjs --no-app                      # skip auto-launching app
  */
 
 import { createServer, request as httpRequest } from "http";
@@ -37,9 +39,13 @@ const PORT = parseInt(args.port || "4445");
 const RUNNER = args["check-runner"] || "localhost:4444";
 const RUNNER_PORT = parseInt(RUNNER.split(":")[1] || "4444");
 const NO_RUNNER = args["no-runner"] === "true";
+const NO_APP = args["no-app"] === "true";
+const APP_CMD = args["app-cmd"] || "npm run dev:local";
+const APP_CWD = args["app-cwd"] || join(__dirname, "..");
 
 // --- Auto-launch pretext-check if not already running ---
 let runnerProc = null;
+let appProc = null;
 
 function isPortOpen(port) {
   return new Promise((resolve) => {
@@ -81,9 +87,49 @@ async function ensureRunner() {
   console.warn(`  runner: http://${RUNNER} (launch timed out — may still be starting)`);
 }
 
+async function isHttpAlive(url) {
+  try {
+    const res = await fetch(url, { method: "GET" });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+async function ensureApp() {
+  if (NO_APP) return;
+  if (await isHttpAlive(TARGET)) {
+    console.log(`  app: ${TARGET} (already running)`);
+    return;
+  }
+
+  appProc = spawn(APP_CMD, {
+    cwd: APP_CWD,
+    shell: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  appProc.stdout.on("data", (d) => process.stdout.write(`  [app] ${d}`));
+  appProc.stderr.on("data", (d) => process.stderr.write(`  [app] ${d}`));
+  appProc.on("exit", (code) => {
+    if (code !== null && code !== 0) console.error(`  [app] exited with code ${code}`);
+    appProc = null;
+  });
+
+  for (let i = 0; i < 240; i++) {
+    await new Promise(r => setTimeout(r, 500));
+    if (await isHttpAlive(TARGET)) {
+      console.log(`  app: ${TARGET} (launched)`);
+      return;
+    }
+  }
+  console.warn(`  app: ${TARGET} (launch timed out — may still be starting)`);
+}
+
 // Clean up runner on exit
 function cleanup() {
   if (runnerProc) { runnerProc.kill(); runnerProc = null; }
+  if (appProc) { appProc.kill(); appProc = null; }
 }
 process.on("exit", cleanup);
 process.on("SIGINT", () => { cleanup(); process.exit(0); });
@@ -123,7 +169,15 @@ const server = createServer((req, res) => {
 
 // --- Start ---
 (async () => {
+  await ensureApp();
   await ensureRunner();
+
+  if (await isPortOpen(PORT)) {
+    const url = `http://localhost:${PORT}${VIEWER_PATH}`;
+    console.log(`Viewport Preview: ${url} (already running)`);
+    try { execSync(`open "${url}"`); } catch {}
+    return;
+  }
 
   server.listen(PORT, () => {
     const url = `http://localhost:${PORT}${VIEWER_PATH}`;

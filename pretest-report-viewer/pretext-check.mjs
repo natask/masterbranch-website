@@ -40,6 +40,156 @@ function loadConfig() {
   return JSON.parse(readFileSync(configPath, "utf-8"));
 }
 
+function resolveContainerWidth(check, bp, horizontalPadding) {
+  let containerWidth = bp.width - horizontalPadding;
+
+  if (typeof check.maxViewportWidth === "number") {
+    containerWidth = Math.min(containerWidth, check.maxViewportWidth - horizontalPadding);
+  }
+
+  if (typeof check.maxContainerWidth === "number") {
+    containerWidth = Math.min(containerWidth, check.maxContainerWidth);
+  }
+
+  if (typeof check.containerFraction === "number") {
+    containerWidth *= check.containerFraction;
+  }
+
+  if (typeof check.reservedWidth === "number") {
+    containerWidth -= check.reservedWidth;
+  }
+
+  return Math.max(0, Math.round(containerWidth));
+}
+
+function resolveEffectiveText(check, bp) {
+  if (typeof check.hiddenBelowWidth === "number" && bp.width < check.hiddenBelowWidth) {
+    return "";
+  }
+  if (typeof check.hiddenAtOrBelowWidth === "number" && bp.width <= check.hiddenAtOrBelowWidth) {
+    return "";
+  }
+  if (typeof check.hiddenAboveWidth === "number" && bp.width > check.hiddenAboveWidth) {
+    return "";
+  }
+  if (typeof check.hiddenAtOrAboveWidth === "number" && bp.width >= check.hiddenAtOrAboveWidth) {
+    return "";
+  }
+
+  if (check.textByBreakpoint && typeof check.textByBreakpoint === "object") {
+    if (Object.hasOwn(check.textByBreakpoint, bp.name)) {
+      return check.textByBreakpoint[bp.name] ?? "";
+    }
+  }
+
+  if (Array.isArray(check.textRules)) {
+    for (const rule of check.textRules) {
+      const nameOk = !rule.breakpoint || rule.breakpoint === bp.name;
+      const minOk = typeof rule.minWidth !== "number" || bp.width >= rule.minWidth;
+      const maxOk = typeof rule.maxWidth !== "number" || bp.width <= rule.maxWidth;
+      if (nameOk && minOk && maxOk) {
+        return rule.text ?? "";
+      }
+    }
+  }
+
+  return check.text || "";
+}
+
+function resolveEffectiveSelector(check, bp) {
+  if (check.selectorByBreakpoint && typeof check.selectorByBreakpoint === "object") {
+    if (Object.hasOwn(check.selectorByBreakpoint, bp.name)) {
+      return check.selectorByBreakpoint[bp.name] || null;
+    }
+  }
+
+  if (Array.isArray(check.selectorRules)) {
+    for (const rule of check.selectorRules) {
+      const nameOk = !rule.breakpoint || rule.breakpoint === bp.name;
+      const minOk = typeof rule.minWidth !== "number" || bp.width >= rule.minWidth;
+      const maxOk = typeof rule.maxWidth !== "number" || bp.width <= rule.maxWidth;
+      if (nameOk && minOk && maxOk) {
+        return rule.selector || null;
+      }
+    }
+  }
+
+  return check.selector || null;
+}
+
+function classifyDeviceResult(check, metrics) {
+  const overflowRatio = metrics.containerWidth > 0
+    ? metrics.textWidth / metrics.containerWidth
+    : Number.POSITIVE_INFINITY;
+
+  if (metrics.error) {
+    return {
+      status: "FAIL",
+      reason: "measurement-error",
+      details: "Layout measurement threw.",
+    };
+  }
+
+  if (!metrics.hasText) {
+    return {
+      status: "ABSENT",
+      reason: "empty-text",
+      details: "No text configured for this breakpoint.",
+    };
+  }
+
+  if (check.noWrap) {
+    if (metrics.textWidth > metrics.containerWidth) {
+      return {
+        status: check.overflowStatus || "FAIL",
+        reason: "truncation",
+        details: "Single-line text exceeds its available width.",
+        overflowRatio,
+      };
+    }
+
+    if (overflowRatio > (check.warnOverflowRatio || 0.9)) {
+      return {
+        status: "WARN",
+        reason: "near-truncation",
+        details: "Single-line text is close to clipping.",
+        overflowRatio,
+      };
+    }
+
+    return {
+      status: "PASS",
+      reason: "fits",
+      details: "Single-line text fits its available width.",
+      overflowRatio,
+    };
+  }
+
+  const drift = metrics.lineCount - metrics.baselineLines;
+  if (drift > 0) {
+    return {
+      status: check.wrapStatus || "WARN",
+      reason: "line-wrap-drift",
+      details: `Text uses ${drift} more line${drift === 1 ? "" : "s"} than desktop.`,
+      lineDrift: drift,
+    };
+  }
+
+  return {
+    status: "PASS",
+    reason: "baseline-match",
+    details: "Text matches or improves on the desktop line count.",
+    lineDrift: drift,
+  };
+}
+
+function applyLetterSpacingToWidth(textWidth, text, fontSizePx, letterSpacingEm) {
+  if (!text || !textWidth || !letterSpacingEm) return textWidth;
+  const glyphs = [...String(text)].length;
+  if (glyphs <= 1) return textWidth;
+  return textWidth + (glyphs - 1) * fontSizePx * letterSpacingEm;
+}
+
 /**
  * Resolve a check's Tailwind classes to pixel font sizes and container widths
  * at each breakpoint. Pure math — no browser needed for this step.
@@ -72,7 +222,9 @@ function resolveCheck(check, breakpoints) {
       horizontalPadding = check.horizontalPadding || 48;
     }
 
-    const containerWidth = bp.width - horizontalPadding;
+    const containerWidth = resolveContainerWidth(check, bp, horizontalPadding);
+    const text = resolveEffectiveText(check, bp);
+    const selector = resolveEffectiveSelector(check, bp);
 
     return {
       breakpoint: bp.name,
@@ -80,6 +232,8 @@ function resolveCheck(check, breakpoints) {
       fontSize: fontSize + "px",
       containerWidth,
       horizontalPadding,
+      text,
+      selector,
     };
   });
 }
@@ -112,6 +266,7 @@ ${config.googleFontsUrl ? '<link href="' + config.googleFontsUrl + '" rel="style
 <div id="status">Loading fonts & measuring...</div>
 <script type="module">
 import { prepare, layout } from "https://esm.sh/@chenglou/pretext@0.0.4";
+${classifyDeviceResult.toString()}
 
 const checks = ${JSON.stringify(resolvedChecks)};
 const breakpoints = ${JSON.stringify(breakpoints)};
@@ -131,14 +286,17 @@ for (const ck of checks) {
 
   // Get baseline from desktop
   const dsk = ck.desktopResolved;
+  const baselineText = dsk.text || "";
   const dskFontStr = (ck.fontWeight || "400") + " " + dsk.fontSize + " " + ck.fontFamily;
   const dskLh = parseFloat(dsk.fontSize) * lh;
-  const dskPrep = prepare(ck.text, dskFontStr);
 
   let baselineLines;
-  if (ck.noWrap) {
+  if (!baselineText) {
+    baselineLines = 0;
+  } else if (ck.noWrap) {
     baselineLines = 1;
   } else {
+    const dskPrep = prepare(baselineText, dskFontStr);
     const dskLayout = layout(dskPrep, dsk.containerWidth, dskLh);
     baselineLines = dskLayout.lineCount;
   }
@@ -148,28 +306,52 @@ for (const ck of checks) {
   for (let i = 0; i < breakpoints.length; i++) {
     const bp = breakpoints[i];
     const r = ck.resolved[i];
+    const text = r.text || "";
     const fontStr = (ck.fontWeight || "400") + " " + r.fontSize + " " + ck.fontFamily;
     const bpLh = parseFloat(r.fontSize) * lh;
 
-    let lc = 0, tw = 0, st = "PASS";
+    let lc = 0, tw = 0;
+    let classification;
 
     try {
-      const p = prepare(ck.text, fontStr);
+      if (text) {
+        const p = prepare(text, fontStr);
 
-      if (ck.noWrap) {
-        const singleLine = layout(p, 99999, bpLh);
-        tw = Math.round(singleLine.width || 0);
-        lc = 1;
-        st = tw > r.containerWidth ? "FAIL" : tw > r.containerWidth * 0.9 ? "WARN" : "PASS";
-      } else {
-        const result = layout(p, r.containerWidth, bpLh);
-        lc = result.lineCount;
-        const drift = lc - baselineLines;
-        st = drift <= 0 ? "PASS" : drift === 1 ? "WARN" : "FAIL";
+        if (ck.noWrap) {
+          const singleLine = layout(p, 99999, bpLh);
+          const rawWidth = singleLine.width || 0;
+          tw = Math.round(
+            applyLetterSpacingToWidth(
+              rawWidth,
+              text,
+              parseFloat(r.fontSize),
+              ck.letterSpacingEm || 0
+            )
+          );
+          lc = 1;
+        } else {
+          const result = layout(p, r.containerWidth, bpLh);
+          lc = result.lineCount;
+        }
       }
+
+      classification = classifyDeviceResult(ck, {
+        hasText: !!text,
+        baselineLines,
+        containerWidth: r.containerWidth,
+        lineCount: lc,
+        textWidth: tw,
+      });
     } catch (e) {
-      st = "FAIL";
       lc = -1;
+      classification = classifyDeviceResult(ck, {
+        hasText: !!text,
+        baselineLines,
+        containerWidth: r.containerWidth,
+        lineCount: lc,
+        textWidth: tw,
+        error: e,
+      });
     }
 
     devices.push({
@@ -179,8 +361,13 @@ for (const ck of checks) {
       containerWidth: r.containerWidth,
       lineCount: lc,
       baselineLines,
-      status: st,
+      status: classification.status,
+      reason: classification.reason,
+      details: classification.details,
+      lineDrift: classification.lineDrift ?? null,
+      overflowRatio: classification.overflowRatio ?? null,
       textWidth: tw,
+      text,
       noWrap: !!ck.noWrap,
     });
   }
@@ -191,13 +378,14 @@ for (const ck of checks) {
       ? "WARN"
       : "PASS";
 
-  results.push({
-    label: ck.label,
-    text: ck.text,
-    page: ck.page || "/",
-    fontFamily: ck.fontFamily,
-    baselineLines,
-    worst,
+    results.push({
+      label: ck.label,
+      text: ck.text,
+      page: ck.page || "/",
+      selector: ck.selector || null,
+      fontFamily: ck.fontFamily,
+      baselineLines,
+      worst,
     devices,
   });
 }
@@ -263,10 +451,20 @@ const server = createServer((req, res) => {
         label: check.label,
         text: check.text,
         page: check.page || "/",
+        selector: check.selector || null,
         fontFamily: check.fontFamily,
         fontWeight: check.fontWeight || "400",
         lineHeight: check.lineHeight || 1.4,
         noWrap: !!check.noWrap,
+        letterSpacingEm: check.letterSpacingEm || 0,
+        textByBreakpoint: check.textByBreakpoint || null,
+        textRules: check.textRules || null,
+        selectorByBreakpoint: check.selectorByBreakpoint || null,
+        selectorRules: check.selectorRules || null,
+        hiddenBelowWidth: check.hiddenBelowWidth ?? null,
+        hiddenAtOrBelowWidth: check.hiddenAtOrBelowWidth ?? null,
+        hiddenAboveWidth: check.hiddenAboveWidth ?? null,
+        hiddenAtOrAboveWidth: check.hiddenAtOrAboveWidth ?? null,
         resolved,
         desktopResolved,
       };

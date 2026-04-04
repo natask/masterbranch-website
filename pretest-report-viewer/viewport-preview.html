@@ -28,6 +28,8 @@
   --warn-dim: rgba(232,197,96,0.08);
   --fail: #e87070;
   --fail-dim: rgba(232,112,112,0.08);
+  --absent: #8b8b88;
+  --absent-dim: rgba(139,139,136,0.1);
   /* Structural */
   --radius: 10px;
   --radius-sm: 6px;
@@ -173,6 +175,41 @@ body {
   font-weight: 600;
   background: rgba(255,255,255,0.04);
 }
+.path-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.path-nav input {
+  width: 190px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.02);
+  color: var(--text);
+  font-size: 0.6875rem;
+  font-family: var(--font-mono);
+  padding: 0 0.5rem;
+}
+.path-nav input:focus {
+  outline: none;
+  border-color: var(--border-active);
+}
+.path-nav button {
+  height: 28px;
+  padding: 0 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.625rem;
+  font-family: var(--font-mono);
+  cursor: pointer;
+}
+.path-nav button:hover {
+  border-color: var(--border-active);
+  color: var(--text);
+}
 
 /* --- LAYOUT --- */
 .main { display: flex; flex: 1; overflow: hidden; }
@@ -271,7 +308,7 @@ body {
 .canvas-header {
   padding: 0.75rem 1.25rem;
   border-bottom: 1px solid var(--border);
-  display: flex; align-items: flex-start; gap: 0.75rem;
+  display: flex; align-items: center; gap: 0.75rem;
   background: var(--surface);
   min-height: 46px;
 }
@@ -303,11 +340,14 @@ body {
 .canvas-meta .fail { color: var(--fail); }
 .canvas-meta .warn { color: var(--warn); }
 .canvas-meta .pass { color: var(--pass); }
+.canvas-meta .absent { color: var(--absent); }
 .canvas-nav {
   display: flex; align-items: center; gap: 0.5rem;
+  flex-shrink: 0;
   font-size: 0.6875rem;
   color: var(--text-muted);
   font-family: var(--font-mono);
+  white-space: nowrap;
 }
 .canvas-nav button {
   width: 28px; height: 28px; padding: 0;
@@ -435,6 +475,7 @@ body {
 /* --- TOUCH OVERLAY --- */
 .touch-overlay {
   position: absolute; inset: 0; z-index: 10;
+  pointer-events: auto;
   cursor: none; touch-action: none;
 }
 .touch-cursor {
@@ -502,6 +543,7 @@ body {
   <button data-filter="warn">warn</button>
   <button data-filter="pass">pass</button>
   <button class="on" data-filter="all">all</button>
+  <button data-filter="nav">nav</button>
 </div>
 
 <div class="main">
@@ -514,13 +556,17 @@ body {
         <div class="canvas-meta" id="canvasMeta"></div>
       </div>
         <div class="canvas-nav">
+          <div class="path-nav">
+            <input id="pathInput" type="text" value="/" placeholder="/about" />
+            <button id="openPathBtn">go</button>
+          </div>
           <button id="prevDevice" disabled>&larr;</button>
           <span id="deviceLabel"></span>
           <button id="nextDevice" disabled>&rarr;</button>
         </div>
       </div>
     <div class="canvas-viewport" id="viewport">
-      <div class="viewport-empty">Select a check to see<br/>how it renders on each device</div>
+      <div class="viewport-empty">Loading preview...</div>
     </div>
     <div class="device-bar" id="deviceBar"></div>
   </div>
@@ -675,6 +721,8 @@ const canvasMetaEl = document.getElementById("canvasMeta");
 const prevBtn = document.getElementById("prevDevice");
 const nextBtn = document.getElementById("nextDevice");
 const runBtn = document.getElementById("runBtn");
+const pathInputEl = document.getElementById("pathInput");
+const openPathBtnEl = document.getElementById("openPathBtn");
 const HIGHLIGHT_STYLE_ID = "pretext-highlight-style";
 const HIGHLIGHT_CLASS = "pretext-highlight-target";
 let highlightedEl = null;
@@ -685,6 +733,20 @@ function selectionKey(check) {
 
 function normalizeText(value) {
   return (value || "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function normalizePath(value) {
+  const raw = (value || "").trim();
+  if (!raw) return "/";
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const u = new URL(raw);
+      return u.pathname + (u.search || "") + (u.hash || "");
+    } catch {
+      return "/";
+    }
+  }
+  return raw.startsWith("/") ? raw : "/" + raw;
 }
 
 function saveCurrentScrollPosition() {
@@ -724,11 +786,12 @@ function ensureHighlightStyles(doc) {
   doc.head.appendChild(style);
 }
 
-function findBestMatchElement(doc, targetText) {
+function findBestMatchElement(doc, targetText, root = null) {
   const wanted = normalizeText(targetText);
   if (!wanted) return null;
 
-  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_ELEMENT);
+  const searchRoot = root || doc.body;
+  const walker = doc.createTreeWalker(searchRoot, NodeFilter.SHOW_ELEMENT);
   let partial = null;
 
   while (walker.nextNode()) {
@@ -743,14 +806,19 @@ function findBestMatchElement(doc, targetText) {
   return partial;
 }
 
-function findCheckElement(doc, check) {
-  if (check.selector) {
+function findCheckElement(doc, target) {
+  if (target.selector) {
     try {
-      const selected = doc.querySelector(check.selector);
-      if (selected) return selected;
+      const selected = doc.querySelector(target.selector);
+      if (selected) {
+        if (!target.text) return selected;
+        const byText = findBestMatchElement(doc, target.text, selected);
+        return byText || selected;
+      }
     } catch {}
   }
-  return findBestMatchElement(doc, check.text);
+  if (!target.text) return null;
+  return findBestMatchElement(doc, target.text);
 }
 
 function clearHighlightedCheck() {
@@ -758,14 +826,14 @@ function clearHighlightedCheck() {
   highlightedEl = null;
 }
 
-function highlightCheckElement(check) {
+function highlightCheckElement(target) {
   if (!frameEl) return false;
   try {
     const doc = frameEl.contentDocument;
     if (!doc?.body) return false;
     ensureHighlightStyles(doc);
     clearHighlightedCheck();
-    const match = findCheckElement(doc, check);
+    const match = findCheckElement(doc, target);
     if (!match) return false;
     match.classList.add(HIGHLIGHT_CLASS);
     highlightedEl = match;
@@ -775,14 +843,14 @@ function highlightCheckElement(check) {
   }
 }
 
-function scrollCheckIntoView(check) {
+function scrollCheckIntoView(target) {
   if (!frameEl) return false;
   try {
     const doc = frameEl.contentDocument;
     if (!doc?.body) return false;
-    const match = findCheckElement(doc, check);
+    const match = findCheckElement(doc, target);
     if (!match) return false;
-    highlightCheckElement(check);
+    highlightCheckElement(target);
     const top = Math.max(0, match.getBoundingClientRect().top + frameEl.contentWindow.scrollY - 120);
     frameEl.contentWindow.scrollTo({ top, behavior: "auto" });
     return true;
@@ -840,11 +908,37 @@ function updateViewportFrame(check, dev) {
 
   if (devInputType === "touch") {
     setupTouchOverlay(overlayEl, frameEl, scale);
+    injectTouchModeStyles(frameEl);
   } else {
     touchCursorEl.classList.remove("visible");
+    removeTouchModeStyles(frameEl);
   }
 
   return { devInputType };
+}
+
+// Inject CSS into iframe to suppress mouse-following effects (flashlight, hover)
+// on touch viewports. The overlay blocks pointer events, but page-load JS may
+// still initialise cursor-followers — this neutralises them inside the document.
+const TOUCH_MODE_STYLE_ID = "viewport-preview-touch-mode";
+function injectTouchModeStyles(frame) {
+  try {
+    const doc = frame.contentDocument;
+    if (!doc || doc.getElementById(TOUCH_MODE_STYLE_ID)) return;
+    const s = doc.createElement("style");
+    s.id = TOUCH_MODE_STYLE_ID;
+    s.textContent =
+      "*, *::before, *::after { cursor: none !important; }" +
+      "[data-flashlight], .flashlight, .cursor-glow, .mouse-follower " +
+      "{ display: none !important; opacity: 0 !important; pointer-events: none !important; }";
+    doc.head.appendChild(s);
+  } catch { /* cross-origin — overlay still blocks events */ }
+}
+function removeTouchModeStyles(frame) {
+  try {
+    const el = frame.contentDocument?.getElementById(TOUCH_MODE_STYLE_ID);
+    if (el) el.remove();
+  } catch {}
 }
 // --- Load fonts + Google Fonts link on first config fetch ---
 async function ensureFonts(config) {
@@ -878,7 +972,7 @@ function classifyDeviceResult(check, metrics) {
 
   if (!metrics.hasText) {
     return {
-      status: "PASS",
+      status: "ABSENT",
       reason: "empty-text",
       details: "No text configured for this breakpoint.",
     };
@@ -929,6 +1023,13 @@ function classifyDeviceResult(check, metrics) {
   };
 }
 
+function applyLetterSpacingToWidth(textWidth, text, fontSizePx, letterSpacingEm) {
+  if (!text || !textWidth || !letterSpacingEm) return textWidth;
+  const glyphs = [...String(text)].length;
+  if (glyphs <= 1) return textWidth;
+  return textWidth + (glyphs - 1) * fontSizePx * letterSpacingEm;
+}
+
 // --- Run pretext measurement locally in the browser ---
 function runMeasurement(config) {
   const { breakpoints, checks } = config;
@@ -967,7 +1068,15 @@ function runMeasurement(config) {
           const p = prepare(text, fontStr);
           if (ck.noWrap) {
             const singleLine = layout(p, 99999, bpLh);
-            tw = Math.round(singleLine.width || 0);
+            const rawWidth = singleLine.width || 0;
+            tw = Math.round(
+              applyLetterSpacingToWidth(
+                rawWidth,
+                text,
+                parseFloat(r.fontSize),
+                ck.letterSpacingEm || 0
+              )
+            );
             lc = 1;
           } else {
             const result = layout(p, r.containerWidth, bpLh);
@@ -998,7 +1107,7 @@ function runMeasurement(config) {
         containerWidth: r.containerWidth, lineCount: lc,
         baselineLines, status: classification.status, reason: classification.reason,
         details: classification.details, lineDrift: classification.lineDrift ?? null,
-        overflowRatio: classification.overflowRatio ?? null, textWidth: tw, text, noWrap: !!ck.noWrap,
+        overflowRatio: classification.overflowRatio ?? null, textWidth: tw, text, selector: r.selector || ck.selector || null, noWrap: !!ck.noWrap,
       });
     }
 
@@ -1065,6 +1174,7 @@ document.getElementById("filters").addEventListener("click", (e) => {
 // --- Render ---
 function filtered() {
   if (!data) return [];
+  if (activeFilter === "nav") return data.results;
   if (activeFilter === "all") return data.results;
   return data.results.filter(r => r.worst === activeFilter.toUpperCase());
 }
@@ -1110,19 +1220,73 @@ function wireCardClicks() {
 }
 
 function updateEmptyState() {
-  viewportEl.innerHTML = '<div class="viewport-empty">Select a check to see<br/>how it renders on each device</div>';
+  ensureViewportFrame();
+  if (!currentFramePage) {
+    currentFramePage = "/";
+    frameEl.onload = null;
+    frameEl.src = TARGET + "/";
+  }
+  clearHighlightedCheck();
   deviceBarEl.innerHTML = "";
-  titleEl.textContent = "Select a check to preview";
+  titleEl.textContent = "No checks for current filter";
   canvasMetaEl.textContent = "";
   deviceLabelEl.textContent = "";
   prevBtn.disabled = true;
   nextBtn.disabled = true;
+}
+
+function manualDevices() {
+  if (!data?.results?.length) return [];
+  return data.results[0].devices || [];
+}
+
+function renderManualDeviceBar(devices) {
+  if (!devices.length) {
+    deviceBarEl.innerHTML = "";
+    return;
+  }
+  const safeIdx = Math.max(0, Math.min(deviceIdx, devices.length - 1));
+  deviceIdx = safeIdx;
+  prevBtn.disabled = safeIdx === 0;
+  nextBtn.disabled = safeIdx === devices.length - 1;
+  const dev = devices[safeIdx];
+  const devInputType = inputTypeForWidth(dev.width);
+  deviceLabelEl.innerHTML = dev.name + " (" + dev.width + "px)" +
+    '<span class="device-type-badge ' + devInputType + '">' +
+    (devInputType === "touch" ? "Touch" : "Mouse") + '</span>';
+  updateViewportFrame({ page: currentFramePage || "/" }, dev);
+
+  deviceBarEl.innerHTML = devices.map((d, i) => {
+    return '<button class="device-btn' + (i === safeIdx ? ' active' : '') + '" data-i="' + i + '">' +
+      '<span class="status-dot" style="background:var(--text-muted)"></span>' + d.name +
+      '</button>';
+  }).join("");
+
+  deviceBarEl.querySelectorAll(".device-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      deviceIdx = parseInt(btn.dataset.i);
+      render();
+    });
+  });
+}
+
+function openManualPath(inputPath) {
+  const path = normalizePath(inputPath);
+  pathInputEl.value = path;
+  ensureViewportFrame();
+  saveCurrentScrollPosition();
   clearHighlightedCheck();
+  currentCheckKey = null;
+  currentFramePage = path;
+  frameEl.onload = () => {
+    restoreScrollPosition(path);
+  };
+  frameEl.src = TARGET + path;
 }
 
 function metricSummary(check, dev) {
   const status = dev.status.toLowerCase();
-  const source = check.selector ? "selector" : "text match";
+  const source = dev.selector ? "selector" : "text match";
   if (dev.noWrap) {
     return (
       '<span class="' + status + '">' + dev.status + "</span> " +
@@ -1147,6 +1311,7 @@ function render() {
   if (!data) return;
   const hash = dataHash();
   const list = filtered();
+  const devices = manualDevices();
 
   // If data/filter changed, rebuild cards
   if (hash !== lastRenderedHash) {
@@ -1161,11 +1326,29 @@ function render() {
     });
   }
 
+  if (!list.length) {
+    selectedIdx = null;
+    deviceIdx = 0;
+    updateEmptyState();
+    renderManualDeviceBar(devices);
+    pathInputEl.value = normalizePath(currentFramePage || "/");
+    return;
+  }
+
+  if (selectedIdx === null || selectedIdx >= list.length) {
+    if (activeFilter !== "nav") {
+      selectedIdx = 0;
+      deviceIdx = 0;
+    }
+  }
+
   if (selectedIdx !== null) {
     syncSelectedCard();
     renderDetail();
   } else {
     updateEmptyState();
+    renderManualDeviceBar(devices);
+    pathInputEl.value = normalizePath(currentFramePage || "/");
   }
 }
 
@@ -1205,10 +1388,15 @@ function renderDetail() {
   const nextSelectionKey = selectionKey(check);
 
   const dev = check.devices[deviceIdx];
+  const targetRef = {
+    selector: dev.selector || check.selector || null,
+    text: dev.text || check.text || "",
+  };
   prevBtn.disabled = deviceIdx === 0;
   nextBtn.disabled = deviceIdx === check.devices.length - 1;
   canvasMetaEl.innerHTML = metricSummary(check, dev);
   const devInputType = inputTypeForWidth(dev.width);
+  pathInputEl.value = normalizePath(check.page || "/");
   deviceLabelEl.innerHTML = dev.name + " (" + dev.width + "px)" +
     '<span class="device-type-badge ' + devInputType + '">' +
     (devInputType === "touch" ? "Touch" : "Mouse") + '</span>';
@@ -1223,22 +1411,27 @@ function renderDetail() {
     currentFramePage = check.page;
     currentCheckKey = nextSelectionKey;
     frameEl.onload = () => {
-      highlightCheckElement(check);
+      highlightCheckElement(targetRef);
       const restored = restoreScrollPosition(check.page);
-      if (!restored || checkChanged) scrollCheckIntoView(check);
+      if (!restored || checkChanged) scrollCheckIntoView(targetRef);
     };
     frameEl.src = TARGET + check.page;
   } else if (checkChanged) {
     currentCheckKey = nextSelectionKey;
-    highlightCheckElement(check);
-    if (!scrollCheckIntoView(check)) restoreScrollPosition(check.page);
+    highlightCheckElement(targetRef);
+    if (!scrollCheckIntoView(targetRef)) restoreScrollPosition(check.page);
   } else {
-    highlightCheckElement(check);
+    highlightCheckElement(targetRef);
+    scrollCheckIntoView(targetRef);
   }
 
   // Device bar
   deviceBarEl.innerHTML = check.devices.map((d, i) => {
-    const color = d.status === "FAIL" ? "var(--fail)" : d.status === "WARN" ? "var(--warn)" : "var(--pass)";
+    const color =
+      d.status === "FAIL" ? "var(--fail)"
+      : d.status === "WARN" ? "var(--warn)"
+      : d.status === "ABSENT" ? "var(--absent)"
+      : "var(--pass)";
     return '<button class="device-btn' + (i === deviceIdx ? ' active' : '') + '" data-i="' + i + '">' +
       '<span class="status-dot" style="background:' + color + '"></span>' +
       d.name +
@@ -1276,15 +1469,43 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-prevBtn.addEventListener("click", () => { if (deviceIdx > 0) { deviceIdx--; renderDetail(); } });
+prevBtn.addEventListener("click", () => {
+  if (selectedIdx !== null) {
+    if (deviceIdx > 0) { deviceIdx--; renderDetail(); }
+    return;
+  }
+  if (deviceIdx > 0) { deviceIdx--; render(); }
+});
 nextBtn.addEventListener("click", () => {
-  const list = filtered();
-  if (selectedIdx !== null && deviceIdx < list[selectedIdx].devices.length - 1) { deviceIdx++; renderDetail(); }
+  if (selectedIdx !== null) {
+    const list = filtered();
+    if (deviceIdx < list[selectedIdx].devices.length - 1) { deviceIdx++; renderDetail(); }
+    return;
+  }
+  const devices = manualDevices();
+  if (deviceIdx < devices.length - 1) { deviceIdx++; render(); }
+});
+
+openPathBtnEl.addEventListener("click", () => {
+  selectedIdx = null;
+  openManualPath(pathInputEl.value);
+  render();
+});
+
+pathInputEl.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  selectedIdx = null;
+  openManualPath(pathInputEl.value);
+  render();
 });
 
 // --- Initial load: run measurement immediately ---
 (async () => {
   try {
+    ensureViewportFrame();
+    frameEl.src = TARGET + "/";
+    currentFramePage = "/";
+    pathInputEl.value = "/";
     runBtn.textContent = "Measuring...";
     runBtn.classList.add("running");
     const resp = await fetch("http://" + RUNNER + "/api/config");
