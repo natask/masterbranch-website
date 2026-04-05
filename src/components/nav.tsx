@@ -4,8 +4,35 @@ import Link from "next/link";
 import { useSession, signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
+import { COMMUNITY_URL, SITE_NAME } from "@/lib/config";
 
-export function Nav() {
+export function XIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+export function SocialNavLink() {
+  return (
+    <a
+      href={COMMUNITY_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2 text-sm text-white/60 transition-colors hover:text-gold"
+    >
+      <XIcon className="h-4 w-4" />
+    </a>
+  );
+}
+
+type NavProps = {
+  showBrandName?: boolean;
+  variant?: "app" | "landing";
+};
+
+export function Nav({ showBrandName = true, variant = "app" }: NavProps = {}) {
   const { data: session, isPending } = useSession();
 
   return (
@@ -13,32 +40,40 @@ export function Nav() {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-3">
           <Logo />
-          <span className="hidden font-cinzel text-sm font-semibold tracking-wider text-white sm:inline">
-            The Master Branch
-          </span>
+          {showBrandName ? (
+            <span data-pretext="nav-brand" className="hidden font-cinzel text-sm font-semibold tracking-wider text-white sm:inline">
+              {SITE_NAME}
+            </span>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-5">
-          <Link href="/about" className="text-sm text-white transition-colors hover:text-white/80">
-            About
-          </Link>
-          {session ? (
-            <div className="appear-auth flex items-center gap-5">
-              <Link href="/dashboard" className="text-sm text-white transition-colors hover:text-white/80">
-                Dashboard
+          {variant === "landing" ? (
+            <SocialNavLink />
+          ) : (
+            <>
+              <Link href="/about" className="text-sm text-white transition-colors hover:text-white/80">
+                About
               </Link>
-              <div className="h-4 w-px bg-border" />
-              <button onClick={() => signOut()} className="text-sm text-white transition-colors hover:text-white/80">
-                Sign out
-              </button>
-            </div>
-          ) : !isPending ? (
-            <div className="appear-auth">
-              <Button asChild size="sm" className="shimmer-pill border-beam rounded-full px-5">
-                <Link href="/login">Sign in</Link>
-              </Button>
-            </div>
-          ) : null}
+              {session ? (
+                <div className="appear-auth flex items-center gap-5">
+                  <Link href="/dashboard" className="text-sm text-white transition-colors hover:text-white/80">
+                    Dashboard
+                  </Link>
+                  <div className="h-4 w-px bg-border" />
+                  <button onClick={() => signOut()} className="text-sm text-white transition-colors hover:text-white/80">
+                    Sign out
+                  </button>
+                </div>
+              ) : !isPending ? (
+                <div className="appear-auth">
+                  <Button asChild size="sm" className="shimmer-pill border-beam rounded-full px-5">
+                    <Link href="/login">Sign in</Link>
+                  </Button>
+                </div>
+              ) : null}
+            </>
+          )}
         </div>
       </div>
     </nav>
