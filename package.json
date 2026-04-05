@@ -9,10 +9,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "pretext:viewer": "node pretest-report-viewer/viewport-preview.mjs",
-    "pretext:verify": "node pretest-report-viewer/verify-pretext-playwright.mjs",
-    "pretext:verify:headed": "node pretest-report-viewer/verify-pretext-playwright.mjs --headed=true",
-    "pretext:verify:strict": "node pretest-report-viewer/verify-pretext-playwright.mjs --fail-on-warn=true",
+    "textlint:verify": "node pretest-report-viewer/verify-text-playwright.mjs",
+    "textlint:verify:headed": "node pretest-report-viewer/verify-text-playwright.mjs --headed=true",
+    "textlint:verify:strict": "node pretest-report-viewer/verify-text-playwright.mjs --fail-on-warn=true",
     "build:cf": "opennextjs-cloudflare build",
     "deploy:landing": "git checkout landing && pnpm run build:cf && wrangler deploy --env landing",
     "deploy:full": "git checkout full-featured && pnpm run build:cf && wrangler deploy --env full",
@@ -20,7 +19,6 @@
     "postinstall": "node scripts/stub-vercel-og.js"
   },
   "dependencies": {
-    "@chenglou/pretext": "^0.0.4",
     "@neondatabase/auth": "^0.2.0-beta.1",
     "@neondatabase/serverless": "^1.0.2",
     "@opennextjs/cloudflare": "^1.17.1",
