@@ -59,6 +59,9 @@ function resolveContainerWidth(check, bp, horizontalPadding) {
     containerWidth -= check.reservedWidth;
   }
 
+  // Container can never exceed the viewport — anything wider clips.
+  containerWidth = Math.min(containerWidth, bp.width);
+
   return Math.max(0, Math.round(containerWidth));
 }
 
@@ -126,7 +129,7 @@ function classifyDeviceResult(check, metrics) {
     return {
       status: "FAIL",
       reason: "measurement-error",
-      details: "Layout measurement threw.",
+      details: `Layout measurement threw: ${metrics.errorMessage || "unknown error"}`,
     };
   }
 
@@ -139,6 +142,16 @@ function classifyDeviceResult(check, metrics) {
   }
 
   if (check.noWrap) {
+    // Hard fail: text wider than the viewport — always clips regardless of container.
+    if (metrics.viewportWidth && metrics.textWidth > metrics.viewportWidth) {
+      return {
+        status: "FAIL",
+        reason: "viewport-clip",
+        details: "Single-line text exceeds the viewport width.",
+        overflowRatio: metrics.textWidth / metrics.viewportWidth,
+      };
+    }
+
     if (metrics.textWidth > metrics.containerWidth) {
       return {
         status: check.overflowStatus || "FAIL",
@@ -183,6 +196,10 @@ function classifyDeviceResult(check, metrics) {
   };
 }
 
+// Browser rendering (hinting, kerning, subpixel) consistently measures wider
+// than pretext's glyph-table math. 5% compensates for observed ~4-8% drift.
+const MEASUREMENT_SAFETY_MARGIN = 1.05;
+
 function applyLetterSpacingToWidth(textWidth, text, fontSizePx, letterSpacingEm) {
   if (!text || !textWidth || !letterSpacingEm) return textWidth;
   const glyphs = [...String(text)].length;
@@ -219,7 +236,7 @@ function resolveCheck(check, breakpoints) {
     if (check.containerPadding) {
       horizontalPadding = resolvePadding(check.containerPadding, bp.width);
     } else {
-      horizontalPadding = check.horizontalPadding || 48;
+      horizontalPadding = check.horizontalPadding ?? 48;
     }
 
     const containerWidth = resolveContainerWidth(check, bp, horizontalPadding);
@@ -241,9 +258,10 @@ function resolveCheck(check, breakpoints) {
 function buildMeasurementPage(config) {
   const breakpoints = config.breakpoints;
   const desktopBp = breakpoints[breakpoints.length - 1];
+  const checks = Array.isArray(config.checks) ? config.checks : [];
 
   // Pre-resolve all checks to pixel values at each breakpoint
-  const resolvedChecks = config.checks.map(check => ({
+  const resolvedChecks = checks.map(check => ({
     ...check,
     resolved: resolveCheck(check, breakpoints),
     desktopResolved: resolveCheck(check, [desktopBp])[0],
@@ -267,6 +285,97 @@ ${config.googleFontsUrl ? '<link href="' + config.googleFontsUrl + '" rel="style
 <script type="module">
 import { prepare, layout } from "https://esm.sh/@chenglou/pretext@0.0.4";
 ${classifyDeviceResult.toString()}
+${applyLetterSpacingToWidth.toString()}
+const MEASUREMENT_SAFETY_MARGIN = ${MEASUREMENT_SAFETY_MARGIN};
+
+function measureAtFontSize(check, text, fontSizePx, containerWidth, lineHeightMultiplier) {
+  const fontSize = fontSizePx + "px";
+  const fontStr = (check.fontWeight || "400") + " " + fontSize + " " + check.fontFamily;
+  const lineHeightPx = fontSizePx * lineHeightMultiplier;
+  const prepared = prepare(text, fontStr);
+
+  if (check.noWrap) {
+    const singleLine = layout(prepared, 99999, lineHeightPx);
+    const rawWidth = singleLine.width || 0;
+    return {
+      fontSize,
+      lineCount: text ? 1 : 0,
+      textWidth: Math.round(
+        applyLetterSpacingToWidth(
+          rawWidth,
+          text,
+          fontSizePx,
+          check.letterSpacingEm || 0
+        ) * MEASUREMENT_SAFETY_MARGIN
+      ),
+    };
+  }
+
+  const result = layout(prepared, containerWidth, lineHeightPx);
+  return {
+    fontSize,
+    lineCount: result.lineCount,
+    textWidth: 0,
+  };
+}
+
+function fitsAtBaseline(check, metrics, baselineLines, containerWidth, viewportWidth) {
+  if (check.noWrap) {
+    if (viewportWidth && metrics.textWidth > viewportWidth) return false;
+    return metrics.textWidth <= containerWidth;
+  }
+
+  return metrics.lineCount <= baselineLines;
+}
+
+function findLargestFittingMeasurement(check, text, baseFontSizePx, minFontSizePx, containerWidth, lineHeightMultiplier, baselineLines, viewportWidth) {
+  const baseMetrics = measureAtFontSize(check, text, baseFontSizePx, containerWidth, lineHeightMultiplier);
+  if (!check.fitToBaseline || !text) {
+    return { fontSizePx: baseFontSizePx, ...baseMetrics };
+  }
+
+  if (fitsAtBaseline(check, baseMetrics, baselineLines, containerWidth, viewportWidth)) {
+    return { fontSizePx: baseFontSizePx, ...baseMetrics };
+  }
+
+  const lowFontSizePx = Math.min(minFontSizePx || baseFontSizePx, baseFontSizePx);
+  const lowMetrics = measureAtFontSize(check, text, lowFontSizePx, containerWidth, lineHeightMultiplier);
+  if (!fitsAtBaseline(check, lowMetrics, baselineLines, containerWidth, viewportWidth)) {
+    return { fontSizePx: lowFontSizePx, ...lowMetrics };
+  }
+
+  let low = lowFontSizePx;
+  let high = baseFontSizePx;
+  let bestFontSizePx = lowFontSizePx;
+  let bestMetrics = lowMetrics;
+
+  for (let index = 0; index < 14; index += 1) {
+    const mid = (low + high) / 2;
+    const midMetrics = measureAtFontSize(check, text, mid, containerWidth, lineHeightMultiplier);
+    if (fitsAtBaseline(check, midMetrics, baselineLines, containerWidth, viewportWidth)) {
+      bestFontSizePx = mid;
+      bestMetrics = midMetrics;
+      low = mid;
+    } else {
+      high = mid;
+    }
+  }
+
+  return { fontSizePx: bestFontSizePx, ...bestMetrics };
+}
+
+// Canvas-based text width — uses the browser's own font renderer.
+// Matches real DOM rendering exactly, unlike pretext's glyph-table math.
+const _measureCanvas = document.createElement("canvas").getContext("2d");
+function canvasTextWidth(text, fontStr, letterSpacingEm, fontSizePx) {
+  _measureCanvas.font = fontStr;
+  if (letterSpacingEm) {
+    _measureCanvas.letterSpacing = (fontSizePx * letterSpacingEm) + "px";
+  } else {
+    _measureCanvas.letterSpacing = "0px";
+  }
+  return _measureCanvas.measureText(text).width;
+}
 
 const checks = ${JSON.stringify(resolvedChecks)};
 const breakpoints = ${JSON.stringify(breakpoints)};
@@ -307,38 +416,34 @@ for (const ck of checks) {
     const bp = breakpoints[i];
     const r = ck.resolved[i];
     const text = r.text || "";
-    const fontStr = (ck.fontWeight || "400") + " " + r.fontSize + " " + ck.fontFamily;
-    const bpLh = parseFloat(r.fontSize) * lh;
+    const baseFontSizePx = parseFloat(r.fontSize);
 
     let lc = 0, tw = 0;
     let classification;
+    let appliedFontSize = r.fontSize;
 
     try {
       if (text) {
-        const p = prepare(text, fontStr);
-
-        if (ck.noWrap) {
-          const singleLine = layout(p, 99999, bpLh);
-          const rawWidth = singleLine.width || 0;
-          tw = Math.round(
-            applyLetterSpacingToWidth(
-              rawWidth,
-              text,
-              parseFloat(r.fontSize),
-              ck.letterSpacingEm || 0
-            )
-          );
-          lc = 1;
-        } else {
-          const result = layout(p, r.containerWidth, bpLh);
-          lc = result.lineCount;
-        }
+        const measurement = findLargestFittingMeasurement(
+          ck,
+          text,
+          baseFontSizePx,
+          ck.fitMinFontSize,
+          r.containerWidth,
+          lh,
+          baselineLines,
+          bp.width
+        );
+        lc = measurement.lineCount;
+        tw = measurement.textWidth;
+        appliedFontSize = measurement.fontSize;
       }
 
       classification = classifyDeviceResult(ck, {
         hasText: !!text,
         baselineLines,
         containerWidth: r.containerWidth,
+        viewportWidth: bp.width,
         lineCount: lc,
         textWidth: tw,
       });
@@ -348,16 +453,19 @@ for (const ck of checks) {
         hasText: !!text,
         baselineLines,
         containerWidth: r.containerWidth,
+        viewportWidth: bp.width,
         lineCount: lc,
         textWidth: tw,
         error: e,
+        errorMessage: e?.message || String(e),
       });
     }
 
     devices.push({
       name: bp.name,
       width: bp.width,
-      fontSize: r.fontSize,
+      fontSize: appliedFontSize,
+      configuredFontSize: r.fontSize,
       containerWidth: r.containerWidth,
       lineCount: lc,
       baselineLines,
@@ -456,7 +564,11 @@ const server = createServer((req, res) => {
         fontWeight: check.fontWeight || "400",
         lineHeight: check.lineHeight || 1.4,
         noWrap: !!check.noWrap,
+        wrapStatus: check.wrapStatus || null,
+        overflowStatus: check.overflowStatus || null,
         letterSpacingEm: check.letterSpacingEm || 0,
+        fitToBaseline: !!check.fitToBaseline,
+        fitMinFontSize: check.fitMinFontSize ?? null,
         textByBreakpoint: check.textByBreakpoint || null,
         textRules: check.textRules || null,
         selectorByBreakpoint: check.selectorByBreakpoint || null,

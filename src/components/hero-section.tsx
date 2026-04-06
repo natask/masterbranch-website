@@ -20,13 +20,13 @@ export function HeroSection({ onUpload }: { onUpload: () => void }) {
         </h1>
         <div className="mt-10 flex items-center justify-center">
           {!session ? (
-            <Button asChild size="lg" className="shimmer-pill border-beam rounded-full px-8 shadow-layered-gold">
+            <Button asChild size="lg" className="shimmer-pill rounded-full px-8 shadow-layered-gold">
               <Link href="/login">Upload Project</Link>
             </Button>
           ) : (
             <Button
               size="lg"
-              className="shimmer-pill border-beam rounded-full px-8 shadow-layered-gold"
+              className="shimmer-pill rounded-full px-8 shadow-layered-gold"
               onClick={onUpload}
             >
               Upload Project

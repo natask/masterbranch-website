@@ -4,7 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const STYLE_ID = "__font-configurator";
 
+type TextFont = "cinzel" | "cormorant";
+
 type Config = {
+  textFont: TextFont;
   rootSize: number;
   bodyWeight: number;
   bodyTracking: number;
@@ -20,6 +23,7 @@ type Config = {
 };
 
 const DEFAULTS: Config = {
+  textFont: "cinzel",
   rootSize: 28,
   bodyWeight: 400,
   bodyTracking: 0,
@@ -62,6 +66,10 @@ function applyConfig(c: Config) {
   }
 
   const rules: string[] = [];
+
+  // Body text font — toggled between Cinzel and Cormorant
+  const bodyFontVar = c.textFont === "cormorant" ? "var(--font-cormorant)" : "var(--font-cinzel)";
+  rules.push(`:root { --font-body-text: ${bodyFontVar}; }`);
 
   // Root font size — drives all rem-based Tailwind sizes
   rules.push(`html { font-size: ${c.rootSize}px !important; }`);
@@ -233,6 +241,33 @@ export function FontConfigurator() {
           <button onClick={() => setOpen(false)} style={closeBtnStyle}>&times;</button>
         </div>
       </div>
+
+      {/* Text Font Mode */}
+      <Section title="Text Font" subtitle="Body text typeface">
+        <div style={{ display: "flex", gap: 6, padding: "5px 10px" }}>
+          {(["cinzel", "cormorant"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => update("textFont", f)}
+              style={{
+                flex: 1,
+                padding: "5px 0",
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase" as const,
+                borderRadius: 4,
+                cursor: "pointer",
+                border: config.textFont === f ? "1px solid rgba(201,165,92,0.5)" : "1px solid rgba(255,255,255,0.08)",
+                background: config.textFont === f ? "rgba(201,165,92,0.12)" : "rgba(255,255,255,0.03)",
+                color: config.textFont === f ? "#c9a55c" : "#9d97aa",
+              }}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </Section>
 
       {/* Brand — Cinzel ("The Master Branch") */}
       <Section title="Brand — Cinzel" subtitle="The Master Branch wordmark">

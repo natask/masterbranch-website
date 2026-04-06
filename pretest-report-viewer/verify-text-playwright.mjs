@@ -5,14 +5,14 @@ import { mkdirSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { chromium } from "playwright";
-import { buildResolvedConfig, loadConfig } from "./check-config.mjs";
+import { discoverRoutes, loadProjectConfig } from "./project-config.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const args = Object.fromEntries(
-  process.argv.slice(2).filter(a => a.startsWith("--")).map(a => {
-    const [k, v] = a.slice(2).split("=");
-    return [k, v ?? "true"];
+  process.argv.slice(2).filter(arg => arg.startsWith("--")).map(arg => {
+    const [key, value] = arg.slice(2).split("=");
+    return [key, value ?? "true"];
   })
 );
 
@@ -61,11 +61,27 @@ function spawnManaged(label, cmd, cwd) {
     env: { ...process.env },
   });
 
-  child.stdout.on("data", d => process.stdout.write(`[${label}] ${d}`));
-  child.stderr.on("data", d => process.stderr.write(`[${label}] ${d}`));
+  child.stdout.on("data", data => process.stdout.write(`[${label}] ${data}`));
+  child.stderr.on("data", data => process.stderr.write(`[${label}] ${data}`));
   managed.push(child);
   return child;
 }
+
+function cleanup() {
+  for (const child of managed) {
+    if (!child.killed) child.kill();
+  }
+}
+
+process.on("exit", cleanup);
+process.on("SIGINT", () => {
+  cleanup();
+  process.exit(130);
+});
+process.on("SIGTERM", () => {
+  cleanup();
+  process.exit(143);
+});
 
 async function ensureService({ label, healthUrl, spawnCmd, cwd, timeoutMs = 120000 }) {
   const startMs = nowMs();
@@ -80,74 +96,457 @@ async function ensureService({ label, healthUrl, spawnCmd, cwd, timeoutMs = 1200
   return { alreadyRunning: false, startupMs: nowMs() - startMs };
 }
 
-function keyFor(label, deviceName) {
-  return `${label}@@${deviceName}`;
+function routeVisitKey(pagePath, deviceName) {
+  return `${pagePath}@@${deviceName}`;
 }
 
-function normalizePagePath(pagePath) {
-  if (!pagePath) return "/";
-  return pagePath.startsWith("/") ? pagePath : `/${pagePath}`;
+function breakpointByName(projectConfig, breakpointName) {
+  return projectConfig.breakpoints.find(bp => bp.name === breakpointName) || null;
 }
 
-function statusRank(status) {
-  if (status === "FAIL") return 3;
-  if (status === "WARN") return 2;
-  if (status === "ABSENT") return 1;
-  return 0;
+function inventoryBreakpointFor(projectConfig) {
+  return breakpointByName(projectConfig, projectConfig.inventoryBreakpoint)
+    || breakpointByName(projectConfig, "Laptop 16\"")
+    || projectConfig.breakpoints[projectConfig.breakpoints.length - 1];
 }
 
-function classifyActual(check, metric, baselineLines) {
-  if (!metric.hasText) return { status: "ABSENT", reason: "empty-text" };
-  if (!metric.found) return { status: "FAIL", reason: "missing-target" };
+function classifyActual(metric, baselineLines) {
+  if (!metric?.hasText) return { status: "ABSENT", reason: "missing-at-breakpoint" };
 
-  const clippedX = metric.clippedViewportX || metric.clippedAncestorX;
-  const exceedsExpectedContainer = !!(
-    check.noWrap &&
-    metric?.rect &&
-    typeof metric.expectedContainerWidth === "number" &&
-    metric.expectedContainerWidth > 0 &&
-    metric.rect.width > metric.expectedContainerWidth + 1
-  );
-
-  if (check.noWrap) {
-    if (metric.clippedViewportX) {
-      return { status: "FAIL", reason: "actual-viewport-clip" };
-    }
-
-    if (metric.horizontalOverflow || metric.clippedAncestorX || exceedsExpectedContainer) {
-      return {
-        status: check.overflowStatus || "FAIL",
-        reason: metric.horizontalOverflow
-          ? "actual-horizontal-overflow"
-          : metric.clippedAncestorX
-            ? "actual-ancestor-clip"
-            : "actual-exceeds-container-width",
-      };
-    }
-
-    return { status: "PASS", reason: "visible-fit" };
-  }
+  if (metric.clippedViewportX) return { status: "FAIL", reason: "actual-viewport-clip-x" };
+  if (metric.clippedAncestorX) return { status: "FAIL", reason: "actual-ancestor-clip-x" };
+  if (metric.clippedViewportY) return { status: "FAIL", reason: "actual-viewport-clip-y" };
+  if (metric.clippedAncestorY) return { status: "FAIL", reason: "actual-ancestor-clip-y" };
 
   const drift = (metric.lineCount || 0) - (baselineLines || 0);
   if (drift > 0) {
     return {
-      status: check.wrapStatus || "WARN",
+      status: "WARN",
       reason: `actual-line-drift+${drift}`,
     };
-  }
-
-  if (clippedX) {
-    return { status: "FAIL", reason: "clipped-even-with-wrap" };
   }
 
   return { status: "PASS", reason: "baseline-or-better" };
 }
 
-async function collectDomMetrics(config) {
+async function waitForRenderablePage(page) {
+  await page.waitForTimeout(250);
+  await page.evaluate(async () => {
+    if (document.fonts?.ready) await document.fonts.ready;
+  });
+}
+
+async function collectRouteInventory(page, pagePath) {
+  return page.evaluate((currentPagePath) => {
+    const SKIP_TAGS = new Set([
+      "SCRIPT",
+      "STYLE",
+      "NOSCRIPT",
+      "SVG",
+      "PATH",
+      "META",
+      "LINK",
+      "HEAD",
+      "TEMPLATE",
+    ]);
+    const TEXT_TAGS = new Set([
+      "A",
+      "BUTTON",
+      "DD",
+      "DT",
+      "EM",
+      "H1",
+      "H2",
+      "H3",
+      "H4",
+      "H5",
+      "H6",
+      "LABEL",
+      "LEGEND",
+      "LI",
+      "P",
+      "SMALL",
+      "SPAN",
+      "STRONG",
+      "SUMMARY",
+      "TD",
+      "TH",
+    ]);
+
+    function normalizeText(value) {
+      return (value || "").replace(/\s+/g, " ").trim();
+    }
+
+    function cssEscape(value) {
+      if (globalThis.CSS?.escape) return globalThis.CSS.escape(value);
+      return String(value).replace(/["\\]/g, "\\$&");
+    }
+
+    function isVisible(el) {
+      if (!(el instanceof HTMLElement)) return false;
+      if (SKIP_TAGS.has(el.tagName)) return false;
+      if (el.closest("[hidden], [aria-hidden='true']")) return false;
+
+      const style = window.getComputedStyle(el);
+      if (style.display === "none" || style.visibility === "hidden") return false;
+      if (Number.parseFloat(style.opacity || "1") === 0) return false;
+
+      return true;
+    }
+
+    function textRectsFor(el) {
+      if (!(el instanceof HTMLElement)) return [];
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return Array.from(range.getClientRects()).filter(rect => rect.width > 0.5 && rect.height > 0.5);
+    }
+
+    function lineCountFor(rects) {
+      if (!rects.length) return 0;
+      const tops = [];
+
+      for (const rect of rects) {
+        const top = Math.round(rect.top * 2) / 2;
+        if (!tops.some(value => Math.abs(value - top) < 0.6)) tops.push(top);
+      }
+
+      return tops.length;
+    }
+
+    function unionRect(rects, fallbackRect) {
+      if (!rects.length) return fallbackRect;
+
+      const left = Math.min(...rects.map(rect => rect.left));
+      const right = Math.max(...rects.map(rect => rect.right));
+      const top = Math.min(...rects.map(rect => rect.top));
+      const bottom = Math.max(...rects.map(rect => rect.bottom));
+
+      return {
+        left,
+        right,
+        top,
+        bottom,
+        width: right - left,
+        height: bottom - top,
+      };
+    }
+
+    function clippingAgainstAncestors(elRect, el) {
+      let clippedX = false;
+      let clippedY = false;
+      let node = el.parentElement;
+
+      while (node && node !== document.documentElement) {
+        const style = window.getComputedStyle(node);
+        const clipsX = ["hidden", "clip", "scroll", "auto"].includes(style.overflowX);
+        const clipsY = ["hidden", "clip", "scroll", "auto"].includes(style.overflowY);
+
+        if (clipsX || clipsY) {
+          const rect = node.getBoundingClientRect();
+          if (clipsX && (elRect.left < rect.left - 0.5 || elRect.right > rect.right + 0.5)) clippedX = true;
+          if (clipsY && (elRect.top < rect.top - 0.5 || elRect.bottom > rect.bottom + 0.5)) clippedY = true;
+        }
+
+        node = node.parentElement;
+      }
+
+      return { clippedX, clippedY };
+    }
+
+    function selectorFor(el) {
+      if (!(el instanceof HTMLElement)) return null;
+
+      if (el.dataset.pretext) {
+        return `[data-pretext="${cssEscape(el.dataset.pretext)}"]`;
+      }
+
+      if (el.id) {
+        return `#${cssEscape(el.id)}`;
+      }
+
+      const segments = [];
+      let node = el;
+
+      while (node && node !== document.body && node instanceof HTMLElement) {
+        if (node.dataset.pretext) {
+          segments.unshift(`[data-pretext="${cssEscape(node.dataset.pretext)}"]`);
+          return `body > ${segments.join(" > ")}`;
+        }
+
+        if (node.id) {
+          segments.unshift(`#${cssEscape(node.id)}`);
+          return `body > ${segments.join(" > ")}`;
+        }
+
+        const tagName = node.tagName.toLowerCase();
+        const siblings = node.parentElement
+          ? Array.from(node.parentElement.children).filter(child => child.tagName === node.tagName)
+          : [];
+
+        const segment = siblings.length > 1
+          ? `${tagName}:nth-of-type(${siblings.indexOf(node) + 1})`
+          : tagName;
+
+        segments.unshift(segment);
+        node = node.parentElement;
+      }
+
+      return `body > ${segments.join(" > ")}`;
+    }
+
+    function labelText(selector, text, target) {
+      if (target) return target;
+      if (selector) return selector.replace(/^body > /, "");
+      if (!text) return "text";
+      return text.length > 80 ? `${text.slice(0, 77)}...` : text;
+    }
+
+    const candidates = [];
+    const included = new Set();
+    const elements = Array.from(document.body.querySelectorAll("*")).reverse();
+
+    for (const el of elements) {
+      if (!isVisible(el)) continue;
+
+      const text = normalizeText(el.innerText || el.textContent || "");
+      if (!text) continue;
+
+      const textRects = textRectsFor(el);
+      if (!textRects.length) continue;
+
+      if (!el.dataset.pretext && !TEXT_TAGS.has(el.tagName)) continue;
+
+      const ancestorPretext = el.parentElement?.closest("[data-pretext]") || null;
+      if (
+        !el.dataset.pretext &&
+        ancestorPretext &&
+        normalizeText(ancestorPretext.innerText || ancestorPretext.textContent || "") === text
+      ) {
+        continue;
+      }
+
+      const childIncluded = Array.from(el.children).some(child => included.has(child));
+      const hasNestedPretextChild = !!el.querySelector("[data-pretext]");
+
+      if (childIncluded) {
+        if (!el.dataset.pretext) continue;
+        if (hasNestedPretextChild) continue;
+      }
+
+      el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+
+      const target = el.dataset.pretext || null;
+      const selector = selectorFor(el);
+      const scrolledTextRects = textRectsFor(el);
+      const elementRect = el.getBoundingClientRect();
+      const rect = unionRect(scrolledTextRects, elementRect);
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const clipping = clippingAgainstAncestors(rect, el);
+      const keyBase = target ? `target:${target}` : `selector:${selector}`;
+
+      candidates.push({
+        key: `${currentPagePath}@@${keyBase}`,
+        label: `${currentPagePath} :: ${labelText(selector, text, target)}`,
+        page: currentPagePath,
+        target,
+        selector,
+        tagName: el.tagName.toLowerCase(),
+        text,
+        hasText: true,
+        lineCount: lineCountFor(scrolledTextRects),
+        clippedViewportX: rect.left < -0.5 || rect.right > viewportWidth + 0.5,
+        clippedViewportY: rect.top < -0.5 || rect.bottom > viewportHeight + 0.5,
+        clippedAncestorX: clipping.clippedX,
+        clippedAncestorY: clipping.clippedY,
+        viewportWidth,
+        viewportHeight,
+        rect: {
+          left: Math.round(rect.left * 100) / 100,
+          right: Math.round(rect.right * 100) / 100,
+          width: Math.round(rect.width * 100) / 100,
+          top: Math.round(rect.top * 100) / 100,
+          bottom: Math.round(rect.bottom * 100) / 100,
+          height: Math.round(rect.height * 100) / 100,
+        },
+        elementRect: {
+          left: Math.round(elementRect.left * 100) / 100,
+          right: Math.round(elementRect.right * 100) / 100,
+          width: Math.round(elementRect.width * 100) / 100,
+          top: Math.round(elementRect.top * 100) / 100,
+          bottom: Math.round(elementRect.bottom * 100) / 100,
+          height: Math.round(elementRect.height * 100) / 100,
+        },
+      });
+
+      included.add(el);
+    }
+
+    return candidates.reverse();
+  }, pagePath);
+}
+
+async function measureKnownChecks(page, checks) {
+  return page.evaluate((knownChecks) => {
+    function normalizeText(value) {
+      return (value || "").replace(/\s+/g, " ").trim();
+    }
+
+    function textRectsFor(el) {
+      if (!(el instanceof HTMLElement)) return [];
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      return Array.from(range.getClientRects()).filter(rect => rect.width > 0.5 && rect.height > 0.5);
+    }
+
+    function lineCountFor(rects) {
+      if (!rects.length) return 0;
+      const tops = [];
+
+      for (const rect of rects) {
+        const top = Math.round(rect.top * 2) / 2;
+        if (!tops.some(value => Math.abs(value - top) < 0.6)) tops.push(top);
+      }
+
+      return tops.length;
+    }
+
+    function unionRect(rects, fallbackRect) {
+      if (!rects.length) return fallbackRect;
+
+      const left = Math.min(...rects.map(rect => rect.left));
+      const right = Math.max(...rects.map(rect => rect.right));
+      const top = Math.min(...rects.map(rect => rect.top));
+      const bottom = Math.max(...rects.map(rect => rect.bottom));
+
+      return {
+        left,
+        right,
+        top,
+        bottom,
+        width: right - left,
+        height: bottom - top,
+      };
+    }
+
+    function clippingAgainstAncestors(elRect, el) {
+      let clippedX = false;
+      let clippedY = false;
+      let node = el.parentElement;
+
+      while (node && node !== document.documentElement) {
+        const style = window.getComputedStyle(node);
+        const clipsX = ["hidden", "clip", "scroll", "auto"].includes(style.overflowX);
+        const clipsY = ["hidden", "clip", "scroll", "auto"].includes(style.overflowY);
+
+        if (clipsX || clipsY) {
+          const rect = node.getBoundingClientRect();
+          if (clipsX && (elRect.left < rect.left - 0.5 || elRect.right > rect.right + 0.5)) clippedX = true;
+          if (clipsY && (elRect.top < rect.top - 0.5 || elRect.bottom > rect.bottom + 0.5)) clippedY = true;
+        }
+
+        node = node.parentElement;
+      }
+
+      return { clippedX, clippedY };
+    }
+
+    function findElement(check) {
+      if (check.selector) {
+        try {
+          const selected = document.querySelector(check.selector);
+          if (selected instanceof HTMLElement) return selected;
+        } catch {}
+      }
+
+      if (check.target) {
+        const selected = document.querySelector(`[data-pretext="${check.target.replace(/["\\]/g, "\\$&")}"]`);
+        if (selected instanceof HTMLElement) return selected;
+      }
+
+      return null;
+    }
+
+    return knownChecks.map(check => {
+      const el = findElement(check);
+      if (!(el instanceof HTMLElement)) {
+        return {
+          key: check.key,
+          found: false,
+          hasText: false,
+          lineCount: 0,
+          clippedViewportX: false,
+          clippedViewportY: false,
+          clippedAncestorX: false,
+          clippedAncestorY: false,
+          rect: null,
+          elementRect: null,
+          text: "",
+        };
+      }
+
+      el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+      const text = normalizeText(el.innerText || el.textContent || "");
+      const textRects = textRectsFor(el);
+      const elementRect = el.getBoundingClientRect();
+      const rect = unionRect(textRects, elementRect);
+      const clipping = clippingAgainstAncestors(rect, el);
+
+      return {
+        key: check.key,
+        found: true,
+        hasText: !!text,
+        text,
+        lineCount: lineCountFor(textRects),
+        clippedViewportX: rect.left < -0.5 || rect.right > window.innerWidth + 0.5,
+        clippedViewportY: rect.top < -0.5 || rect.bottom > window.innerHeight + 0.5,
+        clippedAncestorX: clipping.clippedX,
+        clippedAncestorY: clipping.clippedY,
+        rect: {
+          left: Math.round(rect.left * 100) / 100,
+          right: Math.round(rect.right * 100) / 100,
+          width: Math.round(rect.width * 100) / 100,
+          top: Math.round(rect.top * 100) / 100,
+          bottom: Math.round(rect.bottom * 100) / 100,
+          height: Math.round(rect.height * 100) / 100,
+        },
+        elementRect: {
+          left: Math.round(elementRect.left * 100) / 100,
+          right: Math.round(elementRect.right * 100) / 100,
+          width: Math.round(elementRect.width * 100) / 100,
+          top: Math.round(elementRect.top * 100) / 100,
+          bottom: Math.round(elementRect.bottom * 100) / 100,
+          height: Math.round(elementRect.height * 100) / 100,
+        },
+      };
+    });
+  }, checks);
+}
+
+async function navigateToRoute(page, pagePath, width, perf) {
+  const navStartMs = nowMs();
+  await page.setViewportSize({ width, height: VIEWPORT_HEIGHT });
+  perf.viewportChanges++;
+  await page.goto(`${APP_URL}${pagePath}`, { waitUntil: "domcontentloaded" });
+  perf.totalNavigationMs += nowMs() - navStartMs;
+  perf.navigations++;
+  const landedPath = new URL(page.url()).pathname;
+  if (landedPath !== pagePath) {
+    return { redirected: true, landedPath };
+  }
+
+  const evalStartMs = nowMs();
+  await waitForRenderablePage(page);
+  perf.totalEvaluateMs += nowMs() - evalStartMs;
+  return { redirected: false, landedPath };
+}
+
+async function collectDomMetrics(projectConfig, routes) {
   const browserStartMs = nowMs();
   const browser = await chromium.launch({ headless: HEADLESS });
   const page = await browser.newPage({ viewport: { width: 1280, height: VIEWPORT_HEIGHT } });
-  const metrics = new Map();
+  const checks = new Map();
+  const routeVisits = new Map();
   const perf = {
     browserLaunchMs: 0,
     totalNavigationMs: 0,
@@ -157,209 +556,98 @@ async function collectDomMetrics(config) {
   };
 
   perf.browserLaunchMs = nowMs() - browserStartMs;
+  const inventoryBreakpoint = inventoryBreakpointFor(projectConfig);
+  const discoveredRouteChecks = new Map();
+  const skippedRoutes = new Map();
 
   try {
-    const checksByPage = new Map();
-    for (const check of config.checks) {
-      const pagePath = normalizePagePath(check.page || "/");
-      if (!checksByPage.has(pagePath)) checksByPage.set(pagePath, []);
-      checksByPage.get(pagePath).push(check);
+    for (const pagePath of routes) {
+      const visit = await navigateToRoute(page, pagePath, inventoryBreakpoint.width, perf);
+      if (visit.redirected) {
+        skippedRoutes.set(pagePath, `redirected:${pagePath}->${visit.landedPath}`);
+        for (const bp of projectConfig.breakpoints) {
+          routeVisits.set(routeVisitKey(pagePath, bp.name), {
+            skipped: true,
+            skipReason: `redirected:${pagePath}->${visit.landedPath}`,
+          });
+        }
+        continue;
+      }
+
+      const inventoryStartMs = nowMs();
+      const candidates = await collectRouteInventory(page, pagePath);
+      perf.totalEvaluateMs += nowMs() - inventoryStartMs;
+      routeVisits.set(routeVisitKey(pagePath, inventoryBreakpoint.name), {
+        skipped: false,
+        count: candidates.length,
+      });
+      discoveredRouteChecks.set(pagePath, candidates);
+
+      for (const candidate of candidates) {
+        checks.set(candidate.key, {
+          key: candidate.key,
+          label: candidate.label,
+          page: candidate.page,
+          target: candidate.target,
+          selector: candidate.selector,
+          text: candidate.text,
+          tagName: candidate.tagName,
+          metricsByBreakpoint: new Map([[inventoryBreakpoint.name, candidate]]),
+        });
+      }
     }
 
-    for (let deviceIndex = 0; deviceIndex < config.breakpoints.length; deviceIndex++) {
-      const bp = config.breakpoints[deviceIndex];
-      perf.viewportChanges++;
-      await page.setViewportSize({ width: bp.width, height: VIEWPORT_HEIGHT });
+    const routesWithChecks = [...discoveredRouteChecks.entries()].filter(([, routeChecks]) => routeChecks.length > 0);
 
-      for (const [pagePath, checks] of checksByPage) {
-        const navStartMs = nowMs();
-        await page.goto(`${APP_URL}${pagePath}`, { waitUntil: "domcontentloaded" });
-        const landedPath = new URL(page.url()).pathname;
-        perf.totalNavigationMs += nowMs() - navStartMs;
-        perf.navigations++;
+    for (const bp of projectConfig.breakpoints) {
+      if (bp.name === inventoryBreakpoint.name) continue;
 
-        if (landedPath !== pagePath) {
-          for (const check of checks) {
-            metrics.set(keyFor(check.label, bp.name), {
-              skipped: true,
-              skipReason: `redirected:${pagePath}->${landedPath}`,
-              checkLabel: check.label,
-              deviceName: bp.name,
-              width: bp.width,
-              page: normalizePagePath(check.page || "/"),
-              noWrap: !!check.noWrap,
-              wrapStatus: check.wrapStatus || null,
-              overflowStatus: check.overflowStatus || null,
-              hasText: true,
-            });
-          }
+      for (const [pagePath, routeChecks] of routesWithChecks) {
+        if (skippedRoutes.has(pagePath)) {
+          routeVisits.set(routeVisitKey(pagePath, bp.name), {
+            skipped: true,
+            skipReason: skippedRoutes.get(pagePath),
+          });
           continue;
         }
 
-        await page.waitForTimeout(600);
-        const fontReadyStartMs = nowMs();
-        await page.evaluate(async () => {
-          if (document.fonts?.ready) await document.fonts.ready;
+        const visit = await navigateToRoute(page, pagePath, bp.width, perf);
+        if (visit.redirected) {
+          routeVisits.set(routeVisitKey(pagePath, bp.name), {
+            skipped: true,
+            skipReason: `redirected:${pagePath}->${visit.landedPath}`,
+          });
+          continue;
+        }
+
+        const measureStartMs = nowMs();
+        const metrics = await measureKnownChecks(page, routeChecks.map(check => ({
+          key: check.key,
+          selector: check.selector,
+          target: check.target,
+        })));
+        perf.totalEvaluateMs += nowMs() - measureStartMs;
+
+        routeVisits.set(routeVisitKey(pagePath, bp.name), {
+          skipped: false,
+          count: metrics.length,
         });
-        perf.totalEvaluateMs += nowMs() - fontReadyStartMs;
 
-        for (const check of checks) {
-          const resolved = check.resolved[deviceIndex];
-          const evalStartMs = nowMs();
-          const evalResult = await page.evaluate((input) => {
-            function normalizeText(value) {
-              return (value || "").replace(/\s+/g, " ").trim().toLowerCase();
-            }
-
-            function findBestMatchElement(root, targetText) {
-              const wanted = normalizeText(targetText);
-              if (!wanted) return null;
-              const walker = document.createTreeWalker(root || document.body, NodeFilter.SHOW_ELEMENT);
-              let partial = null;
-
-              while (walker.nextNode()) {
-                const el = walker.currentNode;
-                if (!(el instanceof HTMLElement)) continue;
-                const text = normalizeText(el.innerText || el.textContent || "");
-                if (!text) continue;
-                if (text === wanted) return el;
-                if (!partial && text.includes(wanted)) partial = el;
-              }
-              return partial;
-            }
-
-            function findTarget(selector, text) {
-              if (selector) {
-                try {
-                  const selected = document.querySelector(selector);
-                  if (selected) {
-                    if (!text) return selected;
-                    const inSelected = findBestMatchElement(selected, text);
-                    return inSelected || selected;
-                  }
-                } catch {}
-              }
-              if (!text) return null;
-              return findBestMatchElement(document.body, text);
-            }
-
-            function textRectsFor(el) {
-              if (!(el instanceof HTMLElement)) return [];
-              const range = document.createRange();
-              range.selectNodeContents(el);
-              return Array.from(range.getClientRects()).filter(r => r.width > 0.5 && r.height > 0.5);
-            }
-
-            function lineCountFor(el) {
-              const rects = textRectsFor(el);
-              if (!rects.length) return 0;
-              const tops = [];
-              for (const r of rects) {
-                const t = Math.round(r.top * 2) / 2;
-                if (!tops.some(x => Math.abs(x - t) < 0.6)) tops.push(t);
-              }
-              return tops.length;
-            }
-
-            function unionRect(rects, fallbackRect) {
-              if (!rects.length) return fallbackRect;
-              const left = Math.min(...rects.map(r => r.left));
-              const right = Math.max(...rects.map(r => r.right));
-              const top = Math.min(...rects.map(r => r.top));
-              const bottom = Math.max(...rects.map(r => r.bottom));
-              return {
-                left,
-                right,
-                top,
-                bottom,
-                width: right - left,
-                height: bottom - top,
-              };
-            }
-
-            function clippingAgainstAncestors(elRect, el) {
-              let clippedX = false;
-              let clippedY = false;
-              let node = el.parentElement;
-
-              while (node && node !== document.documentElement) {
-                const s = window.getComputedStyle(node);
-                const clipsX = ["hidden", "clip", "scroll", "auto"].includes(s.overflowX);
-                const clipsY = ["hidden", "clip", "scroll", "auto"].includes(s.overflowY);
-                if (clipsX || clipsY) {
-                  const r = node.getBoundingClientRect();
-                  if (clipsX && (elRect.left < r.left - 0.5 || elRect.right > r.right + 0.5)) clippedX = true;
-                  if (clipsY && (elRect.top < r.top - 0.5 || elRect.bottom > r.bottom + 0.5)) clippedY = true;
-                }
-                node = node.parentElement;
-              }
-
-              return { clippedX, clippedY };
-            }
-
-            const target = findTarget(input.selector, input.text);
-            if (!target || !(target instanceof HTMLElement)) {
-              return {
-                found: false,
-                lineCount: 0,
-                horizontalOverflow: false,
-                clippedViewportX: false,
-                clippedViewportY: false,
-                clippedAncestorX: false,
-                clippedAncestorY: false,
-                viewportWidth: window.innerWidth,
-                viewportHeight: window.innerHeight,
-              };
-            }
-
-            target.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
-            const elementRect = target.getBoundingClientRect();
-            const textRects = textRectsFor(target);
-            const rect = unionRect(textRects, elementRect);
-            const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
-
-            return {
-              found: true,
-              lineCount: lineCountFor(target),
-              horizontalOverflow:
-                target.clientWidth > 0 && (target.scrollWidth - target.clientWidth) > 2,
-              clippedViewportX: rect.left < -0.5 || rect.right > viewportWidth + 0.5,
-              clippedViewportY: rect.top < -0.5 || rect.bottom > viewportHeight + 0.5,
-              ...clippingAgainstAncestors(rect, target),
-              viewportWidth,
-              viewportHeight,
-              rect: {
-                left: Math.round(rect.left * 100) / 100,
-                right: Math.round(rect.right * 100) / 100,
-                width: Math.round(rect.width * 100) / 100,
-              },
-              elementRect: {
-                left: Math.round(elementRect.left * 100) / 100,
-                right: Math.round(elementRect.right * 100) / 100,
-                width: Math.round(elementRect.width * 100) / 100,
-              },
-            };
-          }, {
-            selector: resolved.selector || check.selector || null,
-            text: resolved.text || check.text || "",
+        for (const metric of metrics) {
+          const check = checks.get(metric.key);
+          if (!check) continue;
+          check.metricsByBreakpoint.set(bp.name, {
+            ...metric,
+            key: check.key,
+            label: check.label,
+            page: check.page,
+            target: check.target,
+            selector: check.selector,
+            tagName: check.tagName,
           });
-          perf.totalEvaluateMs += nowMs() - evalStartMs;
-
-          metrics.set(keyFor(check.label, bp.name), {
-            ...evalResult,
-            clippedAncestorX: evalResult.clippedX,
-            clippedAncestorY: evalResult.clippedY,
-            checkLabel: check.label,
-            deviceName: bp.name,
-            width: bp.width,
-            expectedContainerWidth: resolved.containerWidth ?? null,
-            page: normalizePagePath(check.page || "/"),
-            noWrap: !!check.noWrap,
-            wrapStatus: check.wrapStatus || null,
-            overflowStatus: check.overflowStatus || null,
-            hasText: !!(resolved.text || check.text || ""),
-          });
+          if (metric.text && (!check.text || check.text.length < metric.text.length)) {
+            check.text = metric.text;
+          }
         }
       }
     }
@@ -367,54 +655,78 @@ async function collectDomMetrics(config) {
     await browser.close();
   }
 
-  return { metrics, perf };
+  return { checks, routeVisits, perf, inventoryBreakpoint };
 }
 
-function summarizeResults(config, domMetrics) {
-  const desktopName = config.breakpoints[config.breakpoints.length - 1].name;
-  const baselineLines = new Map();
-  for (const check of config.checks) {
-    const metric = domMetrics.get(keyFor(check.label, desktopName));
-    baselineLines.set(check.label, metric?.lineCount || 0);
-  }
-
+function summarizeResults(projectConfig, discoveredChecks, routeVisits, inventoryBreakpoint) {
   const counts = { FAIL: 0, WARN: 0, PASS: 0, ABSENT: 0 };
   const byReason = {};
   const results = [];
   let skipped = 0;
 
-  for (const check of config.checks) {
-    for (const bp of config.breakpoints) {
-      const metric = domMetrics.get(keyFor(check.label, bp.name));
-      if (metric?.skipped) {
+  const checks = [...discoveredChecks.values()].map(check => {
+    const baselineMetric = check.metricsByBreakpoint.get(inventoryBreakpoint.name) || null;
+
+    return {
+      ...check,
+      baselineBreakpoint: inventoryBreakpoint.name,
+      baselineLines: baselineMetric?.lineCount || 0,
+    };
+  });
+
+  for (const check of checks) {
+    for (const bp of projectConfig.breakpoints) {
+      const routeVisit = routeVisits.get(routeVisitKey(check.page, bp.name));
+      if (routeVisit?.skipped) {
         skipped++;
         continue;
       }
 
-      const actual = classifyActual(check, metric, baselineLines.get(check.label));
+      const metric = check.metricsByBreakpoint.get(bp.name) || null;
+      const actual = classifyActual(metric, check.baselineLines);
+
       counts[actual.status] = (counts[actual.status] || 0) + 1;
       byReason[actual.reason] = (byReason[actual.reason] || 0) + 1;
 
       results.push({
+        checkKey: check.key,
         label: check.label,
-        page: normalizePagePath(check.page || "/"),
+        page: check.page,
         device: bp.name,
         width: bp.width,
         status: actual.status,
         reason: actual.reason,
-        baselineLines: baselineLines.get(check.label),
+        baselineBreakpoint: check.baselineBreakpoint,
+        baselineLines: check.baselineLines,
         metric,
       });
     }
   }
 
   results.sort((a, b) => {
-    const statusDelta = statusRank(b.status) - statusRank(a.status);
+    const statusOrder = { FAIL: 3, WARN: 2, ABSENT: 1, PASS: 0 };
+    const statusDelta = statusOrder[b.status] - statusOrder[a.status];
     if (statusDelta !== 0) return statusDelta;
     return a.label.localeCompare(b.label) || a.width - b.width;
   });
 
-  return { results, counts, byReason, skipped };
+  return {
+    checks: checks.map(check => ({
+      key: check.key,
+      label: check.label,
+      page: check.page,
+      target: check.target,
+      selector: check.selector,
+      text: check.text,
+      tagName: check.tagName,
+      baselineBreakpoint: check.baselineBreakpoint,
+      baselineLines: check.baselineLines,
+    })),
+    results,
+    counts,
+    byReason,
+    skipped,
+  };
 }
 
 async function main() {
@@ -429,26 +741,46 @@ async function main() {
   });
 
   const configLoadStartMs = nowMs();
-  const config = buildResolvedConfig(loadConfig(CONFIG_PATH));
+  const projectConfig = loadProjectConfig(CONFIG_PATH);
+  const routeDiscovery = discoverRoutes(join(__dirname, "..", "src", "app"), projectConfig.pages);
   const configLoadMs = nowMs() - configLoadStartMs;
+
+  console.log(`Discovered ${routeDiscovery.routes.length} routable page${routeDiscovery.routes.length === 1 ? "" : "s"} from the project.`);
+  if (routeDiscovery.skippedDynamicRoutes.length) {
+    console.log(`Skipped dynamic routes: ${routeDiscovery.skippedDynamicRoutes.join(", ")}`);
+  }
 
   console.log("Collecting browser DOM metrics...");
   const domStartMs = nowMs();
-  const { metrics: domMetrics, perf } = await collectDomMetrics(config);
+  const { checks: discoveredChecks, routeVisits, perf, inventoryBreakpoint } = await collectDomMetrics(projectConfig, routeDiscovery.routes);
   const domCollectionMs = nowMs() - domStartMs;
 
   const summarizeStartMs = nowMs();
-  const { results, counts, byReason, skipped } = summarizeResults(config, domMetrics);
+  const { checks, results, counts, byReason, skipped } = summarizeResults(projectConfig, discoveredChecks, routeVisits, inventoryBreakpoint);
   const summarizeMs = nowMs() - summarizeStartMs;
+
+  const skippedRoutes = [...routeVisits.entries()]
+    .filter(([, visit]) => visit.skipped)
+    .map(([key, visit]) => {
+      const [page, device] = key.split("@@");
+      return { page, device, reason: visit.skipReason };
+    });
 
   const output = {
     createdAt: new Date().toISOString(),
     appUrl: APP_URL,
     configPath: CONFIG_PATH,
+    inventoryBreakpoint,
+    breakpoints: projectConfig.breakpoints,
+    routes: {
+      discovered: routeDiscovery.routes,
+      skippedDynamic: routeDiscovery.skippedDynamicRoutes,
+      skippedAtRuntime: skippedRoutes,
+    },
     summary: {
-      checks: config.checks.length,
-      breakpoints: config.breakpoints.length,
-      comparisons: config.checks.length * config.breakpoints.length,
+      checks: checks.length,
+      breakpoints: projectConfig.breakpoints.length,
+      comparisons: checks.length * projectConfig.breakpoints.length,
       skipped,
       fail: counts.FAIL || 0,
       warn: counts.WARN || 0,
@@ -471,43 +803,25 @@ async function main() {
       navigations: perf.navigations,
     },
     reasons: byReason,
+    checks,
     results,
   };
 
   mkdirSync(dirname(OUT_PATH), { recursive: true });
   writeFileSync(OUT_PATH, JSON.stringify(output, null, 2));
 
-  console.log("\n=== Browser Text Verification ===");
-  console.log(`comparisons:   ${output.summary.comparisons}`);
-  console.log(`skipped:       ${skipped}`);
-  console.log(`fail:          ${output.summary.fail}`);
-  console.log(`warn:          ${output.summary.warn}`);
-  console.log(`pass:          ${output.summary.pass}`);
-  console.log(`output:        ${OUT_PATH}`);
-  console.log(`timings(ms):   total=${Math.round(output.timingsMs.total)} app=${Math.round(output.timingsMs.appStartup)} dom=${Math.round(output.timingsMs.domCollection)} nav=${Math.round(output.timingsMs.totalNavigation)} eval=${Math.round(output.timingsMs.totalEvaluate)}`);
-
-  const sample = results.filter(item => item.status === "FAIL" || item.status === "WARN").slice(0, 20);
-  if (sample.length) {
-    console.log("\nTop browser findings:");
-    for (const item of sample) {
-      console.log(`- ${item.label} | ${item.device} (${item.width}px) | ${item.status}/${item.reason}`);
-    }
-  }
+  console.log(`\nWrote ${OUT_PATH}`);
+  console.log(`Inventory breakpoint: ${inventoryBreakpoint.name} (${inventoryBreakpoint.width}px)`);
+  console.log(`Checks discovered: ${output.summary.checks}`);
+  console.log(`Results: ${output.summary.fail} fail / ${output.summary.warn} warn / ${output.summary.pass} pass / ${output.summary.absent} absent`);
+  if (output.summary.skipped) console.log(`Skipped comparisons: ${output.summary.skipped}`);
 
   if ((counts.FAIL || 0) > 0 || (FAIL_ON_WARN && (counts.WARN || 0) > 0)) {
     process.exitCode = 1;
   }
 }
 
-try {
-  await main();
-} catch (err) {
+main().catch(err => {
   console.error("verify-text-playwright failed:", err);
-  process.exitCode = 1;
-} finally {
-  for (const child of managed) {
-    try {
-      if (!child.killed) child.kill("SIGTERM");
-    } catch {}
-  }
-}
+  process.exit(1);
+});

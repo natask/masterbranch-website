@@ -132,12 +132,14 @@
   }
   @media (min-width: 640px) {
     html {
-      font-size: 22px;
+      /* linear scale: 22px at 640px, grows toward 28px at 1024px */
+      font-size: clamp(18px, calc(100vw * 22 / 640), 28px);
     }
   }
   @media (min-width: 1024px) {
     html {
-      font-size: 28px;
+      /* linear scale: exactly 28px at 1536px, proportionally smaller below, never above 28px */
+      font-size: min(28px, calc(100vw * 28 / 1536));
     }
   }
   body {
@@ -154,6 +156,10 @@
 
 .font-cinzel {
   font-family: var(--font-cinzel);
+}
+
+.font-body-text {
+  font-family: var(--font-body-text, var(--font-cormorant));
 }
 
 /* Gold gradient text */

@@ -431,7 +431,7 @@ export function UploadModal({
               <Button
                 onClick={handlePublish}
                 disabled={publishing}
-                className="shimmer-pill border-beam rounded-full px-6"
+                className="shimmer-pill rounded-full px-6"
               >
                 {publishing ? "Publishing…" : "Publish"}
               </Button>

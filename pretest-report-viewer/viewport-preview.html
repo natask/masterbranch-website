@@ -560,6 +560,11 @@ body {
             <input id="pathInput" type="text" value="/" placeholder="/about" />
             <button id="openPathBtn">go</button>
           </div>
+          <div class="path-nav">
+            <button id="zoomOutBtn" title="Zoom out">-</button>
+            <button id="zoomResetBtn" title="Reset zoom">100%</button>
+            <button id="zoomInBtn" title="Zoom in">+</button>
+          </div>
           <button id="prevDevice" disabled>&larr;</button>
           <span id="deviceLabel"></span>
           <button id="nextDevice" disabled>&rarr;</button>
@@ -573,21 +578,35 @@ body {
 </div>
 
 <script type="module">
-import { prepare, layout } from "https://esm.sh/@chenglou/pretext@0.0.4";
-
-const RUNNER = "RUNNER_URL";
 const TARGET = "TARGET_URL";
 
 let data = null;
 let activeFilter = "all";
 let selectedIdx = null;
 let deviceIdx = 0;
+let viewportZoom = 1;
 let fontsLoaded = false;
 let frameEl = null;
 let overlayEl = null;
 let currentFramePage = null;
 let currentCheckKey = null;
 const pageScrollPositions = new Map();
+
+// --- Device height lookup (common device heights for width→height mapping) ---
+const DEVICE_HEIGHTS = {
+  375: 667,   // iPhone SE
+  390: 844,   // iPhone 14
+  412: 915,   // Android mid
+  430: 932,   // iPhone Pro Max
+  768: 1024,  // Tablet portrait
+  1024: 768,  // Tablet landscape
+  1280: 800,  // Laptop 13"
+  1440: 900,  // Laptop 14"
+  1536: 960,  // Laptop 16"
+  1920: 1080, // Desktop
+};
+const DEFAULT_HEIGHT = 900;
+function deviceHeight(width) { return DEVICE_HEIGHTS[width] || DEFAULT_HEIGHT; }
 
 // --- Device input type classification ---
 // Touch: mobile + tablet viewports. Mouse: desktop viewports.
@@ -601,8 +620,50 @@ document.body.appendChild(touchCursorEl);
 
 function setupTouchOverlay(overlayEl, frameEl, scale) {
   let pressed = false;
+  let activePointerId = null;
   let dragStart = null;
   let scrollStart = null;
+  let movedWhilePressed = false;
+  let pointerEventsSeen = false;
+
+  function onPressStart(e) {
+    pressed = true;
+    movedWhilePressed = false;
+    touchCursorEl.classList.add("pressed");
+    dragStart = { x: e.clientX, y: e.clientY };
+    try { scrollStart = { x: frameEl.contentWindow.scrollX, y: frameEl.contentWindow.scrollY }; } catch { scrollStart = null; }
+    forwardTouchToIframe(e, frameEl, scale, "touchstart");
+  }
+
+  function onPressMove(e) {
+    touchCursorEl.style.left = e.clientX + "px";
+    touchCursorEl.style.top = e.clientY + "px";
+    if (pressed && dragStart && scrollStart) {
+      const movedX = Math.abs(e.clientX - dragStart.x);
+      const movedY = Math.abs(e.clientY - dragStart.y);
+      if (movedX > 4 || movedY > 4) movedWhilePressed = true;
+      const dx = (dragStart.x - e.clientX) / scale;
+      const dy = (dragStart.y - e.clientY) / scale;
+      try { frameEl.contentWindow.scrollTo(scrollStart.x + dx, scrollStart.y + dy); } catch {}
+      forwardTouchToIframe(e, frameEl, scale, "touchmove");
+    }
+  }
+
+  function onPressEnd(e) {
+    if (!pressed) return;
+    pressed = false;
+    touchCursorEl.classList.remove("pressed");
+    forwardTouchToIframe(e, frameEl, scale, "touchend");
+    dragStart = null;
+    scrollStart = null;
+
+    const ripple = document.createElement("div");
+    ripple.className = "tap-ripple";
+    ripple.style.left = e.clientX + "px";
+    ripple.style.top = e.clientY + "px";
+    document.body.appendChild(ripple);
+    ripple.addEventListener("animationend", () => ripple.remove());
+  }
 
   // --- Visual cursor (finger dot) tracking ---
   // This only drives the visual indicator — NO events are forwarded on hover.
@@ -617,44 +678,55 @@ function setupTouchOverlay(overlayEl, frameEl, scale) {
     dragStart = null;
     scrollStart = null;
   });
+  // Pointer-first path: works for mouse, touch, and pen.
+  overlayEl.addEventListener("pointerdown", (e) => {
+    pointerEventsSeen = true;
+    if (e.button !== 0) return;
+    activePointerId = e.pointerId;
+    try { overlayEl.setPointerCapture(e.pointerId); } catch {}
+    onPressStart(e);
+  });
+  overlayEl.addEventListener("pointermove", (e) => {
+    pointerEventsSeen = true;
+    if (activePointerId !== null && e.pointerId !== activePointerId) return;
+    onPressMove(e);
+  });
+  overlayEl.addEventListener("pointerup", (e) => {
+    pointerEventsSeen = true;
+    if (activePointerId !== null && e.pointerId !== activePointerId) return;
+    onPressEnd(e);
+    activePointerId = null;
+    try { overlayEl.releasePointerCapture(e.pointerId); } catch {}
+  });
+  overlayEl.addEventListener("pointercancel", (e) => {
+    pointerEventsSeen = true;
+    if (activePointerId !== null && e.pointerId !== activePointerId) return;
+    onPressEnd(e);
+    activePointerId = null;
+    try { overlayEl.releasePointerCapture(e.pointerId); } catch {}
+  });
+
+  // Mouse fallback for environments that do not emit PointerEvents.
   overlayEl.addEventListener("mousemove", (e) => {
-    touchCursorEl.style.left = e.clientX + "px";
-    touchCursorEl.style.top = e.clientY + "px";
-    // Drag-to-scroll while pressed (touch pan simulation)
-    if (pressed && dragStart && scrollStart) {
-      const dx = (dragStart.x - e.clientX) / scale;
-      const dy = (dragStart.y - e.clientY) / scale;
-      try { frameEl.contentWindow.scrollTo(scrollStart.x + dx, scrollStart.y + dy); } catch {}
-      // Forward touchmove into iframe
-      forwardTouchToIframe(e, frameEl, scale, "touchmove");
-    }
-    // IMPORTANT: no mousemove/pointerover/pointermove forwarded — no hover on touch.
+    if (pointerEventsSeen) return;
+    onPressMove(e);
   });
-
-  // --- Touch-down (finger contact) ---
   overlayEl.addEventListener("mousedown", (e) => {
-    pressed = true;
-    touchCursorEl.classList.add("pressed");
-    dragStart = { x: e.clientX, y: e.clientY };
-    try { scrollStart = { x: frameEl.contentWindow.scrollX, y: frameEl.contentWindow.scrollY }; } catch { scrollStart = null; }
-    forwardTouchToIframe(e, frameEl, scale, "touchstart");
+    if (pointerEventsSeen) return;
+    onPressStart(e);
+  });
+  overlayEl.addEventListener("mouseup", (e) => {
+    if (pointerEventsSeen) return;
+    onPressEnd(e);
   });
 
-  // --- Touch-up (finger lifts) ---
-  overlayEl.addEventListener("mouseup", (e) => {
-    if (!pressed) return;
-    pressed = false;
-    touchCursorEl.classList.remove("pressed");
-    forwardTouchToIframe(e, frameEl, scale, "touchend");
-    dragStart = null;
-    scrollStart = null;
-    // Tap ripple — visual feedback for touch tap
-    const ripple = document.createElement("div");
-    ripple.className = "tap-ripple";
-    ripple.style.left = e.clientX + "px";
-    ripple.style.top = e.clientY + "px";
-    document.body.appendChild(ripple);
-    ripple.addEventListener("animationend", () => ripple.remove());
+  // Some environments (especially true touch inputs) don't surface mousedown/up
+  // the same way. Forward click directly so tap activation is reliable.
+  overlayEl.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    forwardTapClickToIframe(e, frameEl, scale);
+    movedWhilePressed = false;
   });
 
   // --- Block all hover-generating events from reaching the iframe ---
@@ -677,6 +749,33 @@ function setupTouchOverlay(overlayEl, frameEl, scale) {
       });
     } catch {}
   });
+}
+
+function forwardTapClickToIframe(mouseEvt, frameEl, scale) {
+  try {
+    const doc = frameEl.contentDocument;
+    if (!doc) return;
+    const rect = frameEl.getBoundingClientRect();
+    const x = (mouseEvt.clientX - rect.left) / scale;
+    const y = (mouseEvt.clientY - rect.top) / scale;
+    const target = doc.elementFromPoint(x, y);
+    if (!target || target.nodeType !== 1) return;
+
+    const activatable = target.closest("a,button,[role='button'],input,select,textarea,summary,label");
+    const el = activatable || target;
+    if (typeof el.click === "function") {
+      el.click();
+      return;
+    }
+
+    el.dispatchEvent(new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      clientX: x,
+      clientY: y,
+      view: doc.defaultView,
+    }));
+  } catch {}
 }
 
 // Dispatch real TouchEvent into iframe (same-origin) or degrade silently (cross-origin).
@@ -723,9 +822,33 @@ const nextBtn = document.getElementById("nextDevice");
 const runBtn = document.getElementById("runBtn");
 const pathInputEl = document.getElementById("pathInput");
 const openPathBtnEl = document.getElementById("openPathBtn");
+const zoomOutBtnEl = document.getElementById("zoomOutBtn");
+const zoomResetBtnEl = document.getElementById("zoomResetBtn");
+const zoomInBtnEl = document.getElementById("zoomInBtn");
 const HIGHLIGHT_STYLE_ID = "pretext-highlight-style";
 const HIGHLIGHT_CLASS = "pretext-highlight-target";
 let highlightedEl = null;
+
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 3;
+
+function clampZoom(value) {
+  return Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, value));
+}
+
+function updateZoomLabel() {
+  if (!zoomResetBtnEl) return;
+  zoomResetBtnEl.textContent = Math.round(viewportZoom * 100) + "%";
+}
+
+function setViewportZoom(nextZoom) {
+  const z = clampZoom(nextZoom);
+  if (Math.abs(z - viewportZoom) < 0.001) return;
+  viewportZoom = z;
+  updateZoomLabel();
+  if (selectedIdx !== null) renderDetail();
+  else render();
+}
 
 function selectionKey(check) {
   return check.page + "::" + check.label + "::" + check.text;
@@ -885,12 +1008,14 @@ function ensureViewportFrame() {
 function updateViewportFrame(check, dev) {
   ensureViewportFrame();
 
+  const devH = deviceHeight(dev.width);
   const vpRect = viewportEl.getBoundingClientRect();
   const maxW = Math.max(320, vpRect.width - 32);
   const maxH = Math.max(480, vpRect.height - 32);
-  const scale = Math.min(1, maxW / dev.width, maxH / 900);
+  const fitScale = Math.min(1, maxW / dev.width, maxH / devH);
+  const scale = fitScale * viewportZoom;
   const scaledW = Math.round(dev.width * scale);
-  const scaledH = Math.round(900 * scale);
+  const scaledH = Math.round(devH * scale);
   const devInputType = inputTypeForWidth(dev.width);
 
   const frameWrap = viewportEl.querySelector(".viewport-frame");
@@ -898,7 +1023,7 @@ function updateViewportFrame(check, dev) {
   frameWrap.style.height = scaledH + "px";
 
   frameEl.style.width = dev.width + "px";
-  frameEl.style.height = "900px";
+  frameEl.style.height = devH + "px";
   frameEl.style.transform = "scale(" + scale + ")";
 
   const nextOverlay = document.createElement("div");
@@ -1030,6 +1155,82 @@ function applyLetterSpacingToWidth(textWidth, text, fontSizePx, letterSpacingEm)
   return textWidth + (glyphs - 1) * fontSizePx * letterSpacingEm;
 }
 
+function measureAtFontSize(check, text, fontSizePx, containerWidth, lineHeightMultiplier) {
+  const fontSize = fontSizePx + "px";
+  const fontStr = check.fontWeight + " " + fontSize + " " + check.fontFamily;
+  const lineHeightPx = fontSizePx * lineHeightMultiplier;
+  const prepared = prepare(text, fontStr);
+
+  if (check.noWrap) {
+    const singleLine = layout(prepared, 99999, lineHeightPx);
+    const rawWidth = singleLine.width || 0;
+    return {
+      fontSize,
+      lineCount: text ? 1 : 0,
+      textWidth: Math.round(
+        applyLetterSpacingToWidth(
+          rawWidth,
+          text,
+          fontSizePx,
+          check.letterSpacingEm || 0
+        )
+      ),
+    };
+  }
+
+  const result = layout(prepared, containerWidth, lineHeightPx);
+  return {
+    fontSize,
+    lineCount: result.lineCount,
+    textWidth: 0,
+  };
+}
+
+function fitsAtBaseline(check, metrics, baselineLines, containerWidth, viewportWidth) {
+  if (check.noWrap) {
+    if (viewportWidth && metrics.textWidth > viewportWidth) return false;
+    return metrics.textWidth <= containerWidth;
+  }
+
+  return metrics.lineCount <= baselineLines;
+}
+
+function findLargestFittingMeasurement(check, text, baseFontSizePx, minFontSizePx, containerWidth, lineHeightMultiplier, baselineLines, viewportWidth) {
+  const baseMetrics = measureAtFontSize(check, text, baseFontSizePx, containerWidth, lineHeightMultiplier);
+  if (!check.fitToBaseline || !text) {
+    return { fontSizePx: baseFontSizePx, ...baseMetrics };
+  }
+
+  if (fitsAtBaseline(check, baseMetrics, baselineLines, containerWidth, viewportWidth)) {
+    return { fontSizePx: baseFontSizePx, ...baseMetrics };
+  }
+
+  const lowFontSizePx = Math.min(minFontSizePx || baseFontSizePx, baseFontSizePx);
+  const lowMetrics = measureAtFontSize(check, text, lowFontSizePx, containerWidth, lineHeightMultiplier);
+  if (!fitsAtBaseline(check, lowMetrics, baselineLines, containerWidth, viewportWidth)) {
+    return { fontSizePx: lowFontSizePx, ...lowMetrics };
+  }
+
+  let low = lowFontSizePx;
+  let high = baseFontSizePx;
+  let bestFontSizePx = lowFontSizePx;
+  let bestMetrics = lowMetrics;
+
+  for (let index = 0; index < 14; index += 1) {
+    const mid = (low + high) / 2;
+    const midMetrics = measureAtFontSize(check, text, mid, containerWidth, lineHeightMultiplier);
+    if (fitsAtBaseline(check, midMetrics, baselineLines, containerWidth, viewportWidth)) {
+      bestFontSizePx = mid;
+      bestMetrics = midMetrics;
+      low = mid;
+    } else {
+      high = mid;
+    }
+  }
+
+  return { fontSizePx: bestFontSizePx, ...bestMetrics };
+}
+
 // --- Run pretext measurement locally in the browser ---
 function runMeasurement(config) {
   const { breakpoints, checks } = config;
@@ -1058,30 +1259,26 @@ function runMeasurement(config) {
       const bp = breakpoints[i];
       const r = ck.resolved[i];
       const text = r.text || "";
-      const fontStr = ck.fontWeight + " " + r.fontSize + " " + ck.fontFamily;
-      const bpLh = parseFloat(r.fontSize) * lh;
+      const baseFontSizePx = parseFloat(r.fontSize);
 
       let lc = 0, tw = 0;
       let classification;
+      let appliedFontSize = r.fontSize;
       try {
         if (text) {
-          const p = prepare(text, fontStr);
-          if (ck.noWrap) {
-            const singleLine = layout(p, 99999, bpLh);
-            const rawWidth = singleLine.width || 0;
-            tw = Math.round(
-              applyLetterSpacingToWidth(
-                rawWidth,
-                text,
-                parseFloat(r.fontSize),
-                ck.letterSpacingEm || 0
-              )
-            );
-            lc = 1;
-          } else {
-            const result = layout(p, r.containerWidth, bpLh);
-            lc = result.lineCount;
-          }
+          const measurement = findLargestFittingMeasurement(
+            ck,
+            text,
+            baseFontSizePx,
+            ck.fitMinFontSize,
+            r.containerWidth,
+            lh,
+            baselineLines,
+            bp.width
+          );
+          lc = measurement.lineCount;
+          tw = measurement.textWidth;
+          appliedFontSize = measurement.fontSize;
         }
         classification = classifyDeviceResult(ck, {
           hasText: !!text,
@@ -1103,7 +1300,7 @@ function runMeasurement(config) {
       }
 
       devices.push({
-        name: bp.name, width: bp.width, fontSize: r.fontSize,
+        name: bp.name, width: bp.width, fontSize: appliedFontSize, configuredFontSize: r.fontSize,
         containerWidth: r.containerWidth, lineCount: lc,
         baselineLines, status: classification.status, reason: classification.reason,
         details: classification.details, lineDrift: classification.lineDrift ?? null,
@@ -1136,28 +1333,20 @@ function runMeasurement(config) {
 let lastRenderedHash = null;
 
 runBtn.addEventListener("click", async () => {
-  runBtn.textContent = "Measuring\u2026";
+  runBtn.textContent = "Refreshing\u2026";
   runBtn.classList.add("running");
 
   try {
-    const resp = await fetch("http://" + RUNNER + "/api/config");
-    const config = await resp.json();
-    await ensureFonts(config);
-    data = runMeasurement(config);
-
-    // Cache results on server too
-    fetch("http://" + RUNNER + "/api/results", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    }).catch(() => {});
-
+    const resp = await fetch("/api/run", { method: "POST" });
+    const next = await resp.json();
+    if (!resp.ok) throw new Error(next.error || "Failed to refresh report");
+    data = next;
     await renderSmooth();
   } catch (e) {
     countsEl.innerHTML = '<span style="color:var(--fail)">Error: ' + e.message + '</span>';
   }
 
-  runBtn.textContent = "Generate Report";
+  runBtn.textContent = "Refresh Report";
   runBtn.classList.remove("running");
 });
 
@@ -1279,6 +1468,8 @@ function openManualPath(inputPath) {
   currentCheckKey = null;
   currentFramePage = path;
   frameEl.onload = () => {
+    const curDev = manualDevices()[deviceIdx];
+    if (curDev && inputTypeForWidth(curDev.width) === "touch") injectTouchModeStyles(frameEl);
     restoreScrollPosition(path);
   };
   frameEl.src = TARGET + path;
@@ -1287,10 +1478,14 @@ function openManualPath(inputPath) {
 function metricSummary(check, dev) {
   const status = dev.status.toLowerCase();
   const source = dev.selector ? "selector" : "text match";
+  const fontNote = dev.configuredFontSize && dev.configuredFontSize !== dev.fontSize
+    ? " &middot; fit " + dev.fontSize + " from " + dev.configuredFontSize
+    : "";
   if (dev.noWrap) {
     return (
       '<span class="' + status + '">' + dev.status + "</span> " +
       "&middot; width " + dev.textWidth + "px in " + dev.containerWidth + "px" +
+      fontNote +
       " &middot; " + dev.reason +
       " &middot; " + source
     );
@@ -1301,6 +1496,7 @@ function metricSummary(check, dev) {
     '<span class="' + status + '">' + dev.status + "</span> " +
     "&middot; " + dev.lineCount + " lines vs " + dev.baselineLines + " baseline" +
     " &middot; drift " + drift +
+    fontNote +
     " &middot; " + dev.reason +
     " &middot; " + source
   );
@@ -1411,6 +1607,7 @@ function renderDetail() {
     currentFramePage = check.page;
     currentCheckKey = nextSelectionKey;
     frameEl.onload = () => {
+      if (inputTypeForWidth(dev.width) === "touch") injectTouchModeStyles(frameEl);
       highlightCheckElement(targetRef);
       const restored = restoreScrollPosition(check.page);
       if (!restored || checkChanged) scrollCheckIntoView(targetRef);
@@ -1499,24 +1696,40 @@ pathInputEl.addEventListener("keydown", (e) => {
   render();
 });
 
+zoomOutBtnEl.addEventListener("click", () => {
+  setViewportZoom(viewportZoom / 1.15);
+});
+zoomResetBtnEl.addEventListener("click", () => {
+  setViewportZoom(1);
+});
+zoomInBtnEl.addEventListener("click", () => {
+  setViewportZoom(viewportZoom * 1.15);
+});
+
+viewportEl.addEventListener("wheel", (e) => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  e.preventDefault();
+  const factor = Math.exp(-e.deltaY * 0.0015);
+  setViewportZoom(viewportZoom * factor);
+}, { passive: false });
+
 // --- Initial load: run measurement immediately ---
 (async () => {
   try {
+    updateZoomLabel();
     ensureViewportFrame();
     frameEl.src = TARGET + "/";
     currentFramePage = "/";
     pathInputEl.value = "/";
-    runBtn.textContent = "Measuring...";
+    runBtn.textContent = "Refreshing...";
     runBtn.classList.add("running");
-    const resp = await fetch("http://" + RUNNER + "/api/config");
-    const config = await resp.json();
-    await ensureFonts(config);
-    data = runMeasurement(config);
+    const resp = await fetch("/api/view-data");
+    data = await resp.json();
     await renderSmooth();
   } catch (e) {
-    countsEl.innerHTML = '<span style="color:var(--fail)">Start pretext-check first (port ' + RUNNER.split(":")[1] + ')</span>';
+    countsEl.innerHTML = '<span style="color:var(--fail)">Error: ' + e.message + '</span>';
   }
-  runBtn.textContent = "Generate Report";
+  runBtn.textContent = "Refresh Report";
   runBtn.classList.remove("running");
 })();
 </script>

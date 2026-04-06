@@ -8,6 +8,7 @@ import "./globals.css";
 import { QueryProvider } from "@/components/query-provider";
 import { FontConfigurator } from "@/components/font-configurator";
 import { LayoutShell } from "@/components/layout-shell";
+import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/config";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -28,8 +29,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "The Master Branch",
-  description: "A hacker club for builders",
+  title: SITE_NAME,
+  description: SITE_DESCRIPTION,
 };
 
 export default function RootLayout({

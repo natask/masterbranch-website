@@ -47,9 +47,10 @@ function estimateWidth(text, fontSize, fontFamily) {
 
 function runCLI() {
   const config = JSON.parse(readFileSync(configPath, "utf-8"));
+  const checks = Array.isArray(config.checks) ? config.checks : [];
   const results = [];
 
-  for (const ck of config.checks) {
+  for (const ck of checks) {
     const lh = ck.lineHeight || parseFloat(ck.fontSize) * 1.4;
     const ml = ck.maxLines || 1;
     const devs = [];

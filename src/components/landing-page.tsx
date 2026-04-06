@@ -1,12 +1,12 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
-import { landingCopy } from "@/content/landing-copy";
-import type { ResponsiveCopy } from "@/content/copy-types";
 import { COMMUNITY_URL } from "@/lib/config";
 import { Nav } from "@/components/nav";
 
-const landingSpacing = {
+/* ── spacing & typography tokens ──────────────────────── */
+
+const sp = {
   divider: "flex items-center justify-center gap-4 py-0",
   section: "px-6 py-8 md:py-10",
   sectionAlt: "mx-auto max-w-3xl px-6 py-12 md:py-16",
@@ -16,9 +16,18 @@ const landingSpacing = {
   accent: "mt-8",
   listWrap: "mt-10",
   list: "space-y-8",
-  closingCta: "mt-10",
-  closingFooter: "mt-14",
 };
+
+const ty = {
+  sectionHeading: "text-3xl md:text-4xl font-semibold leading-tight tracking-wide",
+  body: "text-sm md:text-base font-medium tracking-wide",
+  subtitle: "text-lg leading-[1.8]",
+  small: "text-xs",
+};
+
+const tf = "font-body-text";
+
+/* ── utilities ────────────────────────────────────────── */
 
 function useInView(threshold = 0.15) {
   const ref = useRef<HTMLDivElement>(null);
@@ -57,7 +66,7 @@ function FadeIn({ children, className = "", delay = 0 }: {
 
 function Divider() {
   return (
-    <div className={landingSpacing.divider}>
+    <div className={sp.divider}>
       <div className="h-px flex-1 bg-gradient-to-r from-transparent to-white/[0.06]" />
       <div className="h-1 w-1 rounded-full bg-gold/40" />
       <div className="h-px flex-1 bg-gradient-to-l from-transparent to-white/[0.06]" />
@@ -65,33 +74,22 @@ function Divider() {
   );
 }
 
-function CopyText({ copy }: { copy: ResponsiveCopy }) {
-  if (!copy.mobile || copy.mobile === copy.desktop) {
-    return <>{copy.desktop}</>;
-  }
-
+function CallResponse({ prompt, answer }: { prompt: string; answer: string }) {
   return (
-    <>
-      <span className="sm:hidden">{copy.mobile}</span>
-      <span className="hidden sm:inline">{copy.desktop}</span>
-    </>
+    <div className="space-y-1.5">
+      <p className={`${tf} ${ty.body} text-white/45`}>{prompt}</p>
+      <p className={`${tf} ${ty.body} text-white`}>{answer}</p>
+    </div>
   );
 }
 
-export function LandingPage() {
-  const emphasizedManifestoLines = new Set([
-    "Software annoying you? Clone it.",
-    "Workflow broken? Fix it.",
-    "Tool missing? Build it.",
-    "If others need it too, even better.",
-  ]);
-  const goldManifestoLines = new Set([
-    "For those who crave the company of peers.",
-  ]);
+/* ── landing page ─────────────────────────────────────── */
 
+export function LandingPage() {
   return (
     <div className="min-h-screen">
       <Nav variant="landing" />
+
       {/* ━━━━━━━━━━━━━━━━ HERO ━━━━━━━━━━━━━━━━ */}
       <section id="hero" data-pretext="home-hero" className="relative flex min-h-[80vh] items-center justify-center overflow-hidden">
         <div className="pointer-events-none absolute inset-0">
@@ -102,106 +100,165 @@ export function LandingPage() {
         <div className="relative mx-auto max-w-4xl px-6 py-10 text-center md:py-14">
           <FadeIn>
             <p data-pretext="home-location" className="font-cinzel text-xs font-medium uppercase tracking-[0.35em] text-gold/60">
-              {landingCopy.hero.location}
+              San Francisco
             </p>
           </FadeIn>
 
           <FadeIn delay={0.1}>
             <h1 data-pretext="home-hero-title" className="mt-8 font-cinzel text-4xl font-bold leading-[1.05] tracking-wide sm:text-6xl md:text-7xl lg:text-8xl">
-              <span className="text-gold-shimmer">The Master</span>
+              <span data-pretext="home-hero-title-master" className="text-gold-shimmer">The Master</span>
               <br />
-              <span className="text-white">Branch</span>
+              <span data-pretext="home-hero-title-branch" className="text-white">Branch</span>
             </h1>
           </FadeIn>
 
           <FadeIn delay={0.25}>
-            <p data-pretext="home-hero-tagline" className="mx-auto mt-10 max-w-2xl text-lg leading-relaxed text-white/50 md:text-xl">
-              <CopyText copy={landingCopy.hero.tagline} />
+            <p data-pretext="home-hero-tagline" className={`${tf} mx-auto mt-10 max-w-2xl text-lg leading-relaxed text-white/50 md:text-xl`}>
+              Build what you need.
             </p>
           </FadeIn>
-
         </div>
       </section>
 
       {/* ━━━━━━━━━━━━━━━━ MANIFESTO ━━━━━━━━━━━━━━━━ */}
-      {landingCopy.manifesto.map((group, groupIndex) => (
-        <section
-          key={`manifesto-${groupIndex}`}
-          id={groupIndex === 0 ? "manifesto" : "builder-path"}
-          data-pretext={groupIndex === 0 ? "home-manifesto" : "home-builder-path"}
-          className="relative"
-        >
-          <div className={`mx-auto max-w-3xl text-center ${landingSpacing.section}`}>
-            <FadeIn><Divider /></FadeIn>
-
-            {group.heading.desktop ? (
-              <FadeIn delay={0.1}>
-                <h2 className={`${landingSpacing.heading} font-cinzel text-3xl font-semibold leading-tight tracking-wide text-white md:text-4xl`}>
-                  <CopyText copy={group.heading} />
-                </h2>
-              </FadeIn>
-            ) : null}
-
-            {group.paragraphs.map((paragraph, index) => (
-              <FadeIn key={`${paragraph.desktop}-${index}`} delay={0.15 + index * 0.05}>
-                <p
-                  className={`${
-                    index === 0 ? landingSpacing.paragraphFirst : landingSpacing.paragraph
-                  } ${
-                    paragraph.desktop.trim() === "Scratch your own itch"
-                      ? "font-cinzel text-2xl font-semibold tracking-wide text-white md:text-3xl"
-                      : goldManifestoLines.has(paragraph.desktop.trim())
-                        ? "text-lg leading-[1.8] text-gold/75"
-                      : emphasizedManifestoLines.has(paragraph.desktop.trim())
-                        ? "text-lg leading-[1.8] text-white/80"
-                      : "text-lg leading-[1.8] text-white/50"
-                  }`}
-                >
-                  <CopyText copy={paragraph} />
-                </p>
-              </FadeIn>
-            ))}
-
-            {group.accent.desktop ? (
-              <FadeIn delay={0.35}>
-                <p className={`${landingSpacing.accent} font-cinzel text-xl font-medium tracking-wide text-gold/70`}>
-                  <CopyText copy={group.accent} />
-                </p>
-              </FadeIn>
-            ) : null}
-          </div>
-        </section>
-      ))}
-
-      {/* ━━━━━━━━━━━━━━━━ THE NIGHTS ━━━━━━━━━━━━━━━━ */}
-      <section id="nights" data-pretext="home-nights">
-        <div className={`${landingSpacing.sectionAlt} text-center`}>
+      <section id="manifesto" data-pretext="home-manifesto" className="relative">
+        <div className={`mx-auto max-w-3xl text-center ${sp.section}`}>
           <FadeIn><Divider /></FadeIn>
 
           <FadeIn delay={0.1}>
-            <h2 className={`${landingSpacing.heading} font-cinzel text-3xl font-semibold leading-tight tracking-wide text-white md:text-4xl`}>
-              <CopyText copy={landingCopy.nights.heading} />
+            <h2 data-pretext="home-manifesto-heading" className={`${sp.heading} font-cinzel ${ty.sectionHeading} text-white`}>
+              Engineers&apos; Gym
+            </h2>
+          </FadeIn>
+
+          <FadeIn delay={0.15}>
+            <p data-pretext="home-manifesto-paragraph-0" className={`${sp.paragraphFirst} ${ty.subtitle} text-white/50 ${tf}`}>
+              For those who solve their problems.
+            </p>
+          </FadeIn>
+
+          <FadeIn delay={0.2}>
+            <p data-pretext="home-manifesto-paragraph-1" className={`${sp.paragraph} ${ty.subtitle} text-white/50 ${tf}`}>
+              For those who make their ideas real.
+            </p>
+          </FadeIn>
+
+          <FadeIn delay={0.25}>
+            <p data-pretext="home-manifesto-paragraph-2" className={`${sp.paragraph} ${ty.subtitle} text-white/50 ${tf}`}>
+              For those who trade candid feedback.
+            </p>
+          </FadeIn>
+
+          <FadeIn delay={0.3}>
+            <p data-pretext="home-manifesto-paragraph-3" className={`${sp.paragraph} ${ty.subtitle} text-white/50 ${tf}`}>
+              For those who learn by doing.
+            </p>
+          </FadeIn>
+
+          <FadeIn delay={0.35}>
+            <p data-pretext="home-manifesto-paragraph-4" className={`${sp.paragraph} ${ty.subtitle} text-gold/75 ${tf}`}>
+              For those who crave the company of peers.
+            </p>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ━━━━━━━━━━━━━━━━ BUILDER PATH ━━━━━━━━━━━━━━━━ */}
+      <section id="builder-path" data-pretext="home-builder-path" className="relative">
+        <div className={`mx-auto max-w-3xl text-center ${sp.section}`}>
+          <FadeIn><Divider /></FadeIn>
+
+          <FadeIn delay={0.1}>
+            <h2 data-pretext="home-builder-path-heading" className={`${sp.heading} font-cinzel ${ty.sectionHeading} text-white`}>
+              Scratch your own itch
+            </h2>
+          </FadeIn>
+
+          <FadeIn delay={0.15}>
+            <div data-pretext="home-builder-path-paragraph-0" className={`${sp.paragraphFirst} flex flex-col items-center gap-6 text-center`}>
+              <div className="space-y-4 md:space-y-5">
+                <CallResponse prompt="Software annoying you?" answer="Clone it." />
+              </div>
+            </div>
+          </FadeIn>
+
+          <FadeIn delay={0.2}>
+            <div data-pretext="home-builder-path-paragraph-1" className={`${sp.paragraphFirst} flex flex-col items-center gap-6 text-center`}>
+              <div className="space-y-4 md:space-y-5">
+                <CallResponse prompt="Workflow broken?" answer="Fix it." />
+              </div>
+            </div>
+          </FadeIn>
+
+          <FadeIn delay={0.25}>
+            <div data-pretext="home-builder-path-paragraph-2" className={`${sp.paragraphFirst} flex flex-col items-center gap-6 text-center`}>
+              <div className="space-y-4 md:space-y-5">
+                <CallResponse prompt="Tool missing?" answer="Build it." />
+              </div>
+            </div>
+          </FadeIn>
+
+          <FadeIn delay={0.3}>
+            <p data-pretext="home-builder-path-paragraph-3" className={`${sp.paragraph} ${tf} ${ty.body} text-white/35`}>
+              If others need it too, even better.
+            </p>
+          </FadeIn>
+
+          <FadeIn delay={0.35}>
+            <p data-pretext="home-builder-path-accent" className={`${sp.accent} ${tf} text-xl font-medium tracking-wide text-gold/70`}>
+              No one is going to solve your problems your way.
+            </p>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ━━━━━━━━━━━━━━━━ THE NIGHTS ━━━━━━━━━━━━━━━━ */}
+      <section id="nights" data-pretext="home-nights">
+        <div className={`${sp.sectionAlt} text-center`}>
+          <FadeIn><Divider /></FadeIn>
+
+          <FadeIn delay={0.1}>
+            <h2 data-pretext="home-nights-heading" className={`${sp.heading} font-cinzel ${ty.sectionHeading} text-white whitespace-pre-line`}>
+              {"Every day.\n6 - 10pm"}
             </h2>
           </FadeIn>
 
           <FadeIn delay={0.2}>
-            <div className={`${landingSpacing.listWrap} ${landingSpacing.list}`}>
-              {landingCopy.nights.steps.map((step, i) => (
-                <FadeIn key={step.num} delay={0.1 + i * 0.08}>
-                  <div className="flex flex-col items-center gap-2">
-                    <h3 className="font-cinzel text-base font-semibold tracking-wide text-white/80">
-                      <span className="mr-3 font-mono text-xs font-medium text-gold/30">{step.num}</span>
-                      {step.title}
-                      <span className="ml-3 font-mono text-xs font-normal text-white/20">{step.time}</span>
-                    </h3>
-                    <div className="text-center">
-                      <p className="mt-2 text-sm leading-relaxed text-white/40">
-                        <CopyText copy={step.text} />
-                      </p>
-                    </div>
-                  </div>
-                </FadeIn>
-              ))}
+            <div className={`${sp.listWrap} ${sp.list}`}>
+
+              <FadeIn delay={0.1}>
+                <div className="flex flex-col items-center gap-2">
+                  <h3 className="font-cinzel text-base font-semibold tracking-wide text-white/80">
+                    <span className="mr-3 font-mono text-xs font-medium text-gold/30">01</span>
+                    Arrive
+                    <span className="ml-3 font-mono text-xs font-normal text-white/20">6:00</span>
+                  </h3>
+                  <p className={`${tf} mt-2 ${ty.body} text-white/40`}>Ready to build.</p>
+                </div>
+              </FadeIn>
+
+              <FadeIn delay={0.18}>
+                <div className="flex flex-col items-center gap-2">
+                  <h3 className="font-cinzel text-base font-semibold tracking-wide text-white/80">
+                    <span className="mr-3 font-mono text-xs font-medium text-gold/30">02</span>
+                    Build
+                    <span className="ml-3 font-mono text-xs font-normal text-white/20">10:00</span>
+                  </h3>
+                  <p className={`${tf} mt-2 ${ty.body} text-white/40`}>Heads down.</p>
+                </div>
+              </FadeIn>
+
+              <FadeIn delay={0.26}>
+                <div className="flex flex-col items-center gap-2">
+                  <h3 className="font-cinzel text-base font-semibold tracking-wide text-white/80">
+                    <span className="mr-3 font-mono text-xs font-medium text-gold/30">03</span>
+                    Demo
+                    <span className="ml-3 font-mono text-xs font-normal text-white/20">10:00+</span>
+                  </h3>
+                  <p className={`${tf} mt-2 ${ty.body} text-white/40`}>What you have.</p>
+                </div>
+              </FadeIn>
+
             </div>
           </FadeIn>
         </div>
@@ -209,39 +266,64 @@ export function LandingPage() {
 
       {/* ━━━━━━━━━━━━━━━━ PRINCIPLES ━━━━━━━━━━━━━━━━ */}
       <section id="principles" data-pretext="home-principles">
-        <div className={`mx-auto max-w-3xl ${landingSpacing.section}`}>
+        <div className={`mx-auto max-w-3xl ${sp.section}`}>
           <FadeIn><Divider /></FadeIn>
 
           <FadeIn delay={0.1}>
-            <div className={`${landingSpacing.listWrap} ${landingSpacing.list} text-center`}>
-              {landingCopy.principles.map((item, i) => (
-                <FadeIn key={item.title} delay={0.15 + i * 0.1}>
-                  <div>
-                    <p className="font-cinzel text-lg font-semibold tracking-wide text-white/80">
-                      {item.title}<span className="text-gold/40">.</span>
-                    </p>
-                    <p className="mt-1 text-sm text-white/35">{item.desc}</p>
-                  </div>
-                </FadeIn>
-              ))}
+            <div className={`${sp.listWrap} ${sp.list} text-center`}>
+
+              <FadeIn delay={0.15}>
+                <div>
+                  <p data-pretext="home-principle-0-title" className={`font-cinzel ${ty.subtitle} text-white/80`}>
+                    No BS<span className="text-gold/40">.</span>
+                  </p>
+                  <p data-pretext="home-principle-0-description" className={`${tf} mt-1 ${ty.body} text-white/35`}>
+                    Only what was built and how.
+                  </p>
+                </div>
+              </FadeIn>
+
+              <FadeIn delay={0.25}>
+                <div>
+                  <p data-pretext="home-principle-1-title" className={`font-cinzel ${ty.subtitle} text-white/80`}>
+                    No Sponsors<span className="text-gold/40">.</span>
+                  </p>
+                  <p data-pretext="home-principle-1-description" className={`${tf} mt-1 ${ty.body} text-white/35`}>
+                    Only us paying for our own tools.
+                  </p>
+                </div>
+              </FadeIn>
+
+              <FadeIn delay={0.35}>
+                <div>
+                  <p data-pretext="home-principle-2-title" className={`font-cinzel ${ty.subtitle} text-white/80`}>
+                    No Excuses<span className="text-gold/40">.</span>
+                  </p>
+                  <p data-pretext="home-principle-2-description" className={`${tf} mt-1 ${ty.body} text-white/35`}>
+                    Only unbounded ambition.
+                  </p>
+                </div>
+              </FadeIn>
+
             </div>
           </FadeIn>
 
           <FadeIn delay={0.4}>
             <div className="mt-10 flex flex-col items-center gap-5 pt-4 text-center">
-              <p className="font-cinzel text-lg font-medium tracking-wide text-white/70">
-                {landingCopy.actions.challengePrompt}
+              <p data-pretext="home-challenge-prompt" className={`${tf} ${ty.subtitle} text-white/70`}>
+                Think you belong?
               </p>
               <a
+                data-pretext="home-join-link"
                 href={COMMUNITY_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="shimmer-pill inline-flex items-center gap-2.5 rounded-full px-8 py-2.5 text-sm font-semibold shadow-layered-gold"
               >
-                {landingCopy.actions.joinLabel}
+                Prove it.
               </a>
-              <p className="font-cinzel text-xs uppercase tracking-[0.4em] text-white/15">
-                {landingCopy.closing.footer}
+              <p data-pretext="home-closing-footer" className={`${tf} ${ty.small} uppercase tracking-[0.4em] text-white/15`}>
+                Master yourself. Master AI.
               </p>
             </div>
           </FadeIn>

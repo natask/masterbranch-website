@@ -305,6 +305,7 @@ async function collectDomMetrics(config) {
             checkLabel: check.label,
             deviceName: bp.name,
             width: bp.width,
+            expectedContainerWidth: resolved.containerWidth ?? null,
             page: normalizePagePath(check.page || "/"),
             noWrap: !!check.noWrap,
             wrapStatus: check.wrapStatus || null,
@@ -326,12 +327,31 @@ function classifyActual(check, metric, baselineLines) {
   if (!metric.found) return { status: "FAIL", reason: "missing-target" };
 
   const clippedX = metric.clippedViewportX || metric.clippedAncestorX;
+  const exceedsExpectedContainer = !!(
+    check.noWrap &&
+    metric?.rect &&
+    typeof metric.expectedContainerWidth === "number" &&
+    metric.expectedContainerWidth > 0 &&
+    metric.rect.width > metric.expectedContainerWidth + 1
+  );
 
   if (check.noWrap) {
-    if (clippedX) {
+    // Viewport clipping is always a hard FAIL — text beyond the screen is unusable.
+    if (metric.clippedViewportX) {
+      return {
+        status: "FAIL",
+        reason: "actual-viewport-clip",
+      };
+    }
+
+    if (metric.horizontalOverflow || metric.clippedAncestorX || exceedsExpectedContainer) {
       return {
         status: check.overflowStatus || "FAIL",
-        reason: "actual-horizontal-clipping",
+        reason: metric.horizontalOverflow
+          ? "actual-horizontal-overflow"
+          : metric.clippedAncestorX
+            ? "actual-ancestor-clip"
+            : "actual-exceeds-container-width",
       };
     }
     return { status: "PASS", reason: "visible-fit" };

@@ -44,122 +44,51 @@ export const landingCopy: LandingCopy = {
   },
   hero: {
     location: "San Francisco",
-    tagline: {
-      desktop: "Build what you need.",
-      mobile: "Build what you need.",
-    },
+    tagline: "Build what you need.",
   },
   manifesto: [
     {
-      heading: {
-        desktop: "Engineers' Gym",
-        mobile: "Engineers' Gym",
-      },
+      heading: "Engineers' Gym",
       paragraphs: [
-        {
-          desktop:
-            "For those who solve their problems.",
-          mobile:
-            "For those who solve their problems.",
-        },
-        {
-          desktop:
-            "For those who make their ideas real.",
-          mobile:
-            "For those who make their ideas real.",
-        },
-        {
-          desktop:
-            "For those who trade candid feedback.",
-          mobile:
-            "For those who trade candid feedback.",
-        },
-        {
-          desktop:
-            "For those who learn by doing.",
-          mobile:
-            "For those who learn by doing.",
-        },
-        {
-          desktop:
-            "For those who crave the company of peers.",
-          mobile:
-            "For those who crave the company of peers.",
-        },
+        "For those who solve their problems.",
+        "For those who make their ideas real.",
+        "For those who trade candid feedback.",
+        "For those who learn by doing.",
+        "For those who crave the company of peers.",
       ],
-      accent: {
-        desktop: "",
-      },
+      accent: "",
     },
     {
-      heading: {
-        desktop: "",
-        mobile: "",
-      },
+      heading: "Scratch your own itch",
       paragraphs: [
-        {
-          desktop:
-            "Scratch your own itch",
-          mobile: "Scratch your own itch",
-        },
-        {
-          desktop:
-            "Software annoying you? Clone it.",
-          mobile: "Software annoying you? Clone it.",
-        },
-        {
-          desktop:
-            "Workflow broken? Fix it.",
-          mobile: "Workflow broken? Fix it.",
-        },
-        {
-          desktop:
-            "Tool missing? Build it.",
-          mobile: "Tool missing? Build it.",
-        },
-        {
-          desktop:
-            "If others need it too, even better.",
-          mobile: "If others need it too, even better.",
-        },
+        "Software annoying you?\nClone it.",
+        "Workflow broken?\nFix it.",
+        "Tool missing?\nBuild it.",
+        "If others need it too, even better.",
       ],
-      accent: {
-        desktop: "No one is going to solve your problems your way.",
-      },
+      accent: "No one is going to solve your problems your way.",
     },
   ],
   nights: {
-    heading: {
-      desktop: "Every day. 6 to 10pm",
-      mobile: "Every day. 6-10pm",
-    },
+    heading: "Every day.\n6 - 10pm",
     steps: [
       {
         num: "01",
         title: "Arrive",
         time: "6:00",
-        text: {
-          desktop: "Ready to build.",
-          mobile: "Ready to build.",
-        },
+        text: "Ready to build.",
       },
       {
         num: "02",
         title: "Build",
         time: "10:00",
-        text: {
-          desktop: "Heads down.",
-          mobile: "Heads down.",
-        },
+        text: "Heads down.",
       },
       {
         num: "03",
         title: "Demo",
         time: "10:00+",
-        text: {
-          desktop: "Ready to show.",
-          mobile: "Ready to show.",
-        },
+        text: "What you have.",
       },
     ],
   },

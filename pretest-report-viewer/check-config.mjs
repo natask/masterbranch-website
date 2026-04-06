@@ -68,6 +68,8 @@ export function resolveEffectiveSelector(check, bp) {
 }
 
 export function resolveCheck(check, breakpoints) {
+  const selector = check.selector || (check.target ? `[data-pretext='${check.target}']` : null);
+
   return breakpoints.map(bp => {
     let fontSize;
 
@@ -89,7 +91,7 @@ export function resolveCheck(check, breakpoints) {
     if (check.containerPadding) {
       horizontalPadding = resolvePadding(check.containerPadding, bp.width);
     } else {
-      horizontalPadding = check.horizontalPadding || 48;
+      horizontalPadding = check.horizontalPadding ?? 48;
     }
 
     return {
@@ -99,7 +101,7 @@ export function resolveCheck(check, breakpoints) {
       containerWidth: resolveContainerWidth(check, bp, horizontalPadding),
       horizontalPadding,
       text: resolveEffectiveText(check, bp),
-      selector: resolveEffectiveSelector(check, bp),
+      selector: resolveEffectiveSelector({ ...check, selector }, bp),
     };
   });
 }
@@ -107,14 +109,16 @@ export function resolveCheck(check, breakpoints) {
 export function buildResolvedConfig(config) {
   const breakpoints = config.breakpoints;
   const desktopBp = breakpoints[breakpoints.length - 1];
+  const checks = Array.isArray(config.checks) ? config.checks : [];
 
   return {
     ...config,
-    checks: config.checks.map(check => ({
+    checks: checks.map(check => ({
       label: check.label,
+      target: check.target || null,
       text: check.text,
       page: check.page || "/",
-      selector: check.selector || null,
+      selector: check.selector || (check.target ? `[data-pretext='${check.target}']` : null),
       fontFamily: check.fontFamily,
       fontWeight: check.fontWeight || "400",
       lineHeight: check.lineHeight || 1.4,
@@ -122,6 +126,8 @@ export function buildResolvedConfig(config) {
       wrapStatus: check.wrapStatus || null,
       overflowStatus: check.overflowStatus || null,
       letterSpacingEm: check.letterSpacingEm || 0,
+      fitToBaseline: !!check.fitToBaseline,
+      fitMinFontSize: check.fitMinFontSize ?? null,
       textByBreakpoint: check.textByBreakpoint || null,
       textRules: check.textRules || null,
       selectorByBreakpoint: check.selectorByBreakpoint || null,

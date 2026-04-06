@@ -75,9 +75,9 @@ export function ProjectGrid({ initialProjects }: { initialProjects: Project[] })
     : "Search for projects or start building something new.";
 
   return (
-    <section className="mx-auto max-w-6xl px-6 py-20">
+    <section data-pretext="home-projects" className="mx-auto max-w-6xl px-6 py-20">
       <div className="mb-10 flex flex-col items-center gap-6 sm:flex-row sm:items-end sm:justify-between">
-        <h2 className="font-serif text-3xl font-bold">Explore Projects</h2>
+        <h2 data-pretext="home-projects-heading" className="font-serif text-3xl font-bold">Explore Projects</h2>
         <div className="relative w-full sm:w-72">
           {loading ? (
             <svg className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" viewBox="0 0 24 24" fill="none">
@@ -160,7 +160,7 @@ function CardItem({
         className="block w-full text-left"
         onClick={onOpen}
       >
-        <ProjectCard className="h-full overflow-hidden rounded-3xl border border-white/[0.07] bg-card">
+        <ProjectCard data-pretext="home-project-card" className="h-full overflow-hidden rounded-3xl border border-white/[0.07] bg-card">
           {/* Image area */}
           <div className="relative flex h-44 items-center justify-center overflow-hidden bg-secondary">
             {project.imageUrl ? (
@@ -187,7 +187,7 @@ function CardItem({
 
           {/* Card body */}
           <div className="relative z-10 p-4">
-            <h3 className="font-serif text-base font-semibold leading-snug line-clamp-1 text-white">
+            <h3 data-pretext="home-project-card-title" className="font-serif text-base font-semibold leading-snug line-clamp-1 text-white">
               {project.title}
             </h3>
             {project.description && (
@@ -280,9 +280,6 @@ function HoverLinks({ project }: { project: Project }) {
         className="flex items-center gap-1 rounded-full border border-white/10 bg-card/90 px-3 py-1 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:text-foreground"
         onClick={(e) => e.stopPropagation()}
       >
-        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-        </svg>
         Share
       </a>
     </div>

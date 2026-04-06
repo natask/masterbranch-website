@@ -6,10 +6,11 @@ import { PERSPECTIVE, normaliseMouse, buildTiltTransform, getTiltTransition } fr
 export function ProjectCard({
   children,
   className = "",
+  ...props
 }: {
   children: React.ReactNode;
   className?: string;
-}) {
+} & React.HTMLAttributes<HTMLDivElement>) {
   const ref = useRef<HTMLDivElement>(null);
   const frameRef = useRef<number | null>(null);
   const enteringRef = useRef(false);
@@ -61,6 +62,7 @@ export function ProjectCard({
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       className={`project-card ${className}`}
+      {...props}
     >
       {children}
     </div>
