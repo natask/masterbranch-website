@@ -80,7 +80,7 @@ export function Footer() {
   }, [measure]);
 
   return (
-    <footer data-pretext="home-footer" className="relative overflow-hidden border-t border-border bg-background">
+    <footer className="relative overflow-hidden border-t border-border bg-background">
       <div
         ref={topRowRef}
         className={
@@ -95,7 +95,6 @@ export function Footer() {
         }
       >
         <span
-          data-pretext="home-footer-copyright"
           className="font-cinzel"
           style={{
             fontSize: "clamp(10px, 1.1vw, 20px)",
@@ -107,19 +106,25 @@ export function Footer() {
           {SITE_NAME} &copy; {new Date().getFullYear()}
         </span>
         <span
-          data-pretext="home-footer-tagline"
           style={{
             fontSize: "clamp(12px, 1.4vw, 22px)",
             fontWeight: 400,
             whiteSpace: "nowrap",
           }}
         >
-          {FOOTER_TAGLINE}
+          {FOOTER_TAGLINE}{" "}
+          <a
+            href="https://sundai.club"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-white/60 transition-colors"
+          >
+            Sundai
+          </a>
         </span>
       </div>
       <div className="pointer-events-none select-none text-center leading-none" aria-hidden>
         <span
-          data-pretext="home-footer-wordmark"
           ref={wordmarkRef}
           className="inline-block max-w-none font-cinzel font-bold text-foreground/[0.15]"
           style={{
