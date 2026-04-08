@@ -1,104 +1,111 @@
-import type { ResponsiveCopy } from "@/content/copy-types";
+/* ── block types ──────────────────────────────────────── */
 
-type LandingScheduleStep = {
+export type StatementBlock = {
+  type: "statement";
+  text: string;
+  tone?: "default" | "gold" | "muted";
+};
+
+export type CallResponseBlock = {
+  type: "call-response";
+  prompt: string;
+  answer: string;
+};
+
+export type AccentBlock = {
+  type: "accent";
+  text: string;
+};
+
+export type ContentBlock = StatementBlock | CallResponseBlock | AccentBlock;
+
+export type ScheduleStep = {
   num: string;
   title: string;
   time: string;
-  text: ResponsiveCopy;
+  desc: string;
 };
 
-type LandingPrinciple = {
+export type Principle = {
   title: string;
   desc: string;
 };
 
-type LandingCopy = {
-  actions: {
-    challengePrompt: string;
-    joinLabel: string;
-  };
+export type ContentSection = {
+  id: string;
+  heading: string;
+  blocks: ContentBlock[];
+};
+
+export type LandingCopy = {
   hero: {
     location: string;
-    tagline: ResponsiveCopy;
+    tagline: string;
   };
-  manifesto: Array<{
-    heading: ResponsiveCopy;
-    paragraphs: ResponsiveCopy[];
-    accent: ResponsiveCopy;
-  }>;
+  sections: ContentSection[];
   nights: {
-    heading: ResponsiveCopy;
-    steps: LandingScheduleStep[];
-  };
-  principles: LandingPrinciple[];
-  closing: {
     heading: string;
+    steps: ScheduleStep[];
+  };
+  principles: Principle[];
+  cta: {
+    prompt: string;
+    label: string;
     footer: string;
   };
 };
 
+/* ── copy ─────────────────────────────────────────────── */
+
 export const landingCopy: LandingCopy = {
-  actions: {
-    challengePrompt: "Think you belong?",
-    joinLabel: "Prove it.",
-  },
   hero: {
     location: "San Francisco",
     tagline: "Build what you need.",
   },
-  manifesto: [
+
+  sections: [
     {
-      heading: "Engineers' Gym",
-      paragraphs: [
-        "For those who solve their problems.",
-        "For those who make their ideas real.",
-        "For those who trade candid feedback.",
-        "For those who learn by doing.",
-        "For those who crave the company of peers.",
+      id: "manifesto",
+      heading: "Engineering\nGym",
+      blocks: [
+        { type: "statement", text: "For those who solve their problems." },
+        { type: "statement", text: "For those who make their ideas real." },
+        { type: "statement", text: "For those who trade *candid* feedback." },
+        { type: "statement", text: "For those who learn by doing." },
+        { type: "statement", text: "For those who crave the company of peers", tone: "gold" },
       ],
-      accent: "",
     },
     {
-      heading: "Scratch your own itch",
-      paragraphs: [
-        "Software annoying you?\nClone it.",
-        "Workflow broken?\nFix it.",
-        "Tool missing?\nBuild it.",
-        "If others need it too, even better.",
+      id: "builder-path",
+      heading: "Scratch\nyour own itch",
+      blocks: [
+        { type: "call-response", prompt: "Software annoying you?", answer: "Clone it." },
+        { type: "call-response", prompt: "Workflow broken?", answer: "Fix it." },
+        { type: "call-response", prompt: "Tool missing?", answer: "Build it." },
+        { type: "statement", text: "If others need it too, even ***better***." },
+        { type: "statement", text: "No one else will solve\nyour problems\nyour *way*", tone: "gold" },
       ],
-      accent: "No one is going to solve your problems your way.",
     },
   ],
+
   nights: {
-    heading: "Every day.\n6 - 10pm",
+    heading: "Every day\nFour Hours",
     steps: [
-      {
-        num: "01",
-        title: "Arrive",
-        time: "6:00",
-        text: "Ready to build.",
-      },
-      {
-        num: "02",
-        title: "Build",
-        time: "10:00",
-        text: "Heads down.",
-      },
-      {
-        num: "03",
-        title: "Demo",
-        time: "10:00+",
-        text: "What you have.",
-      },
+      { num: "01", title: "Arrive", time: "6:00", desc: "Ready to build." },
+      { num: "02", title: "Build", time: "10:00", desc: "Heads down." },
+      { num: "03", title: "Demo", time: "10:00+", desc: "What you have." },
     ],
   },
+
   principles: [
     { title: "No BS", desc: "Only what was built and how." },
     { title: "No Sponsors", desc: "Only us paying for our own tools." },
-    { title: "No Excuses", desc: "Only unbounded ambition." },
+    { title: "No Excuses", desc: "Only unbridled ambition." },
   ],
-  closing: {
-    heading: "",
-    footer: "Master yourself. Master AI.",
+
+  cta: {
+    prompt: "Are you ready?",
+    label: "Prove it.",
+    footer: "Master yourself.\nMaster AI.",
   },
 };

@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "opennextjs-cloudflare build && wrangler dev",
-    "dev:local": "next dev",
+    "dev": "next dev",
+    "dev:cf": "node scripts/dev-cf.mjs",
+    "dev:cf:smart": "node scripts/dev-cf-smart.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

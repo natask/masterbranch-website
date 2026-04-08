@@ -13,7 +13,7 @@ export function HeroSection({ onUpload }: { onUpload: () => void }) {
         <div className="absolute left-1/2 top-0 h-[600px] w-[800px] -translate-x-1/2 -translate-y-1/4 rounded-full bg-gold/[0.05] blur-[120px]" />
       </div>
       <div className="relative mx-auto max-w-3xl px-6 text-center">
-        <h1 className="font-cinzel text-6xl font-bold leading-[1.1] tracking-wide md:text-7xl lg:text-8xl">
+        <h1 className="font-cinzel fluid-hero font-bold leading-[1.1] tracking-wide">
           <span className="text-gold-shimmer">The Master</span>
           <br />
           <span className="text-white">Branch</span>

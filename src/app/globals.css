@@ -128,19 +128,8 @@
     scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
   }
   html {
-    font-size: 18px;
-  }
-  @media (min-width: 640px) {
-    html {
-      /* linear scale: 22px at 640px, grows toward 28px at 1024px */
-      font-size: clamp(18px, calc(100vw * 22 / 640), 28px);
-    }
-  }
-  @media (min-width: 1024px) {
-    html {
-      /* linear scale: exactly 28px at 1536px, proportionally smaller below, never above 28px */
-      font-size: min(28px, calc(100vw * 28 / 1536));
-    }
+    /* Smooth proportional root: 18px at 375px → 28px at 1440px, no breakpoint jumps */
+    font-size: clamp(18px, calc(0.939vw + 14.48px), 28px);
   }
   body {
     @apply bg-background text-foreground;
@@ -161,6 +150,15 @@
 .font-body-text {
   font-family: var(--font-body-text, var(--font-cormorant));
 }
+
+/* ---- Fluid typography — linear interpolation 375px → 1440px, capped at laptop ---- */
+/* formula: clamp(min, calc(slope·vw + intercept), max)                               */
+.fluid-hero     { font-size: clamp(40px, calc(11vw - 1px), 158px); }
+.fluid-h2       { font-size: clamp(34px, calc(2.4vw + 25px), 59px); }
+.fluid-subtitle { font-size: clamp(20px, calc(0.9vw + 17px), 30px); }
+.fluid-body     { font-size: clamp(14px, calc(1vw + 12px), 26px); }
+.fluid-xs       { font-size: clamp(12px, calc(0.6vw + 11px), 20px); }
+.fluid-accent   { font-size: clamp(20px, calc(1.2vw + 16px), 33px); }
 
 /* Gold gradient text */
 .text-gold-gradient {

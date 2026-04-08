@@ -44,11 +44,11 @@ export default async function DashboardPage() {
 
       <main className="mx-auto max-w-5xl px-6 py-16">
         {/* Header */}
-        <div data-pretext="dashboard-header" className="mb-12">
+        <div className="mb-12">
           <p className="text-sm font-medium uppercase tracking-[0.15em] text-gold">
             Dashboard
           </p>
-          <h1 data-pretext="dashboard-header-title" className="mt-2 font-serif text-4xl font-bold tracking-tight text-white">
+          <h1 className="mt-2 font-serif text-4xl font-bold tracking-tight text-white">
             Welcome back
           </h1>
         </div>
@@ -76,11 +76,11 @@ export default async function DashboardPage() {
         </div>
 
         {/* Upload / Create project CTA */}
-        <Card data-pretext="dashboard-upload" className="mb-12 border-gold/20 bg-gold/[0.03]">
+        <Card className="mb-12 border-gold/20 bg-gold/[0.03]">
           <CardContent className="flex flex-col items-center gap-4 py-10 sm:flex-row sm:justify-between sm:py-8">
             <div>
-              <h2 data-pretext="dashboard-upload-title" className="font-serif text-xl font-bold">Share what you&apos;ve built</h2>
-              <p data-pretext="dashboard-upload-description" className="mt-1 text-sm text-muted-foreground">
+              <h2 className="font-serif text-xl font-bold">Share what you&apos;ve built</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
                 Upload a project, link your GitHub repo, and add the traces behind it.
               </p>
             </div>
@@ -89,9 +89,9 @@ export default async function DashboardPage() {
         </Card>
 
         {/* Projects section */}
-        <section data-pretext="dashboard-projects" className="mb-12">
+        <section className="mb-12">
           <div className="mb-6 flex items-end justify-between">
-            <h2 data-pretext="dashboard-projects-title" className="font-serif text-2xl font-bold">Your Projects</h2>
+            <h2 className="font-serif text-2xl font-bold">Your Projects</h2>
             {userProjects.length > 0 && (
               <NewProjectModal triggerLabel="+ New" triggerVariant="link" triggerSize="sm" triggerClassName="text-gold h-auto p-0" />
             )}
@@ -120,9 +120,9 @@ export default async function DashboardPage() {
         <Separator className="mb-12" />
 
         {/* Branches section */}
-        <section data-pretext="dashboard-branches">
+        <section>
           <div className="mb-6 flex items-end justify-between">
-            <h2 data-pretext="dashboard-branches-title" className="font-serif text-2xl font-bold">Your Branches</h2>
+            <h2 className="font-serif text-2xl font-bold">Your Branches</h2>
             <NewBranchModal triggerLabel="+ Create" triggerVariant="link" triggerSize="sm" triggerClassName="text-gold h-auto p-0" />
           </div>
 
@@ -135,7 +135,7 @@ export default async function DashboardPage() {
                   </svg>
                 </div>
                 <p className="text-sm font-medium">No branches yet</p>
-                <p data-pretext="dashboard-branches-empty-description" className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-sm text-muted-foreground">
                   Join a branch or create your own community fork.
                 </p>
                 <NewBranchModal triggerLabel="Create a Branch" triggerClassName="mt-6 rounded-full" triggerVariant="outline" triggerSize="sm" />

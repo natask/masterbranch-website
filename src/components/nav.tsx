@@ -36,12 +36,12 @@ export function Nav({ showBrandName = true, variant = "app" }: NavProps = {}) {
   const { data: session, isPending } = useSession();
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+    <nav className="sticky top-0 z-50 h-[6vh] border-b border-border/50 bg-background/80 backdrop-blur-xl">
+      <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-6">
         <div className="flex items-center gap-3">
           <Logo />
           {showBrandName ? (
-            <span data-pretext="nav-brand" className="hidden font-cinzel text-sm font-semibold tracking-wider text-white sm:inline">
+            <span className="hidden font-cinzel text-sm font-semibold tracking-wider text-white sm:inline">
               {SITE_NAME}
             </span>
           ) : null}

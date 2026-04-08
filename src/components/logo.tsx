@@ -13,7 +13,7 @@ export function Logo({ size = "sm" }: { size?: "sm" | "md" }) {
         alt={SITE_NAME}
         width={px}
         height={px}
-        className={`${dims} cursor-pointer transition-transform duration-200 hover:scale-125`}
+        className={`${dims} cursor-pointer transition-transform duration-200 hover:scale-110`}
       />
     </Link>
   );

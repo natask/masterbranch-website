@@ -75,9 +75,9 @@ export function ProjectGrid({ initialProjects }: { initialProjects: Project[] })
     : "Search for projects or start building something new.";
 
   return (
-    <section data-pretext="home-projects" className="mx-auto max-w-6xl px-6 py-20">
+    <section className="mx-auto max-w-6xl px-6 py-20">
       <div className="mb-10 flex flex-col items-center gap-6 sm:flex-row sm:items-end sm:justify-between">
-        <h2 data-pretext="home-projects-heading" className="font-serif text-3xl font-bold">Explore Projects</h2>
+        <h2 className="font-serif text-3xl font-bold">Explore Projects</h2>
         <div className="relative w-full sm:w-72">
           {loading ? (
             <svg className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" viewBox="0 0 24 24" fill="none">
@@ -160,7 +160,7 @@ function CardItem({
         className="block w-full text-left"
         onClick={onOpen}
       >
-        <ProjectCard data-pretext="home-project-card" className="h-full overflow-hidden rounded-3xl border border-white/[0.07] bg-card">
+        <ProjectCard className="h-full overflow-hidden rounded-3xl border border-white/[0.07] bg-card">
           {/* Image area */}
           <div className="relative flex h-44 items-center justify-center overflow-hidden bg-secondary">
             {project.imageUrl ? (
@@ -187,7 +187,7 @@ function CardItem({
 
           {/* Card body */}
           <div className="relative z-10 p-4">
-            <h3 data-pretext="home-project-card-title" className="font-serif text-base font-semibold leading-snug line-clamp-1 text-white">
+            <h3 className="font-serif text-base font-semibold leading-snug line-clamp-1 text-white">
               {project.title}
             </h3>
             {project.description && (

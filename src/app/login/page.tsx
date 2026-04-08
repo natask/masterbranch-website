@@ -6,7 +6,7 @@ import { FitText } from "@/components/ui/fit-text";
 
 export default function LoginPage() {
   return (
-    <div data-pretext="login-page" className="flex min-h-screen flex-col items-center justify-center px-6">
+    <div className="flex min-h-screen flex-col items-center justify-center px-6">
       <div className="relative w-full max-w-sm text-center">
         {/* Ambient glow */}
         <div className="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center">
@@ -15,7 +15,6 @@ export default function LoginPage() {
 
         <FitText
           as="h1"
-          data-pretext="login-welcome"
           className="font-cormorant text-7xl font-bold tracking-tight text-white"
           text="Welcome"
           minFontSize={42}
@@ -24,7 +23,6 @@ export default function LoginPage() {
         <p className="mt-2 mb-10 text-sm text-muted-foreground"></p>
 
         <Button
-          data-pretext="login-signin"
           onClick={() => signIn.social({ provider: "github", callbackURL: "/" })}
           size="lg"
           className="shimmer-pill w-full gap-3 rounded-full"
