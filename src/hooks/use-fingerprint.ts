@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 function generateId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {
@@ -10,17 +10,16 @@ function generateId() {
 }
 
 export function useFingerprint(): string | null {
-  const [fingerprint, setFingerprint] = useState<string | null>(null);
-
-  useEffect(() => {
+  const [fingerprint] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
     const key = "mb_fp";
     let fp = localStorage.getItem(key);
     if (!fp) {
       fp = generateId();
       localStorage.setItem(key, fp);
     }
-    setFingerprint(fp);
-  }, []);
+    return fp;
+  });
 
   return fingerprint;
 }

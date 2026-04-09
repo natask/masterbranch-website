@@ -17,6 +17,7 @@
  */
 
 import { createServer, request as httpRequest } from "http";
+import { createConnection } from "net";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { execSync, spawn } from "child_process";
 import { fileURLToPath } from "url";
@@ -39,7 +40,7 @@ const args = Object.fromEntries(
 const TARGET = args.target || "http://localhost:3000";
 const PORT = parseInt(args.port || "4445");
 const NO_APP = args["no-app"] === "true";
-const APP_CMD = args["app-cmd"] || "npm run dev:local";
+const APP_CMD = args["app-cmd"] || "npm run dev";
 const APP_CWD = args["app-cwd"] || join(__dirname, "..");
 const VERIFY_CMD = args["verify-cmd"] || "node pretest-report-viewer/verify-text-playwright.mjs";
 
@@ -241,6 +242,23 @@ const server = createServer((req, res) => {
   );
   proxyReq.on("error", () => { res.writeHead(502); res.end("proxy error"); });
   req.pipe(proxyReq);
+});
+
+// --- WebSocket proxy (Next.js HMR) ---
+server.on("upgrade", (req, socket, head) => {
+  const target = createConnection({ host: targetUrl.hostname, port: targetUrl.port }, () => {
+    target.write(
+      `${req.method} ${req.url} HTTP/${req.httpVersion}\r\n` +
+      Object.entries({ ...req.headers, host: targetUrl.host })
+        .map(([k, v]) => `${k}: ${v}`).join("\r\n") +
+      "\r\n\r\n"
+    );
+    if (head.length) target.write(head);
+    target.pipe(socket);
+    socket.pipe(target);
+  });
+  target.on("error", () => socket.destroy());
+  socket.on("error", () => target.destroy());
 });
 
 // --- Start ---

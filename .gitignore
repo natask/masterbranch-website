@@ -51,3 +51,9 @@ next-env.d.ts
 /.chat/
 /.claude/
 .gstack/
+
+# build baselines
+.next-baseline/
+
+# textproof artifacts
+.textproof/

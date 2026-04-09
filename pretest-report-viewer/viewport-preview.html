@@ -175,6 +175,37 @@ body {
   font-weight: 600;
   background: rgba(255,255,255,0.04);
 }
+.search-box {
+  margin-left: auto;
+  position: relative;
+}
+.search-box input {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  padding: 0.3rem 0.6rem 0.3rem 1.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+  color: var(--text);
+  outline: none;
+  width: 180px;
+  transition: border-color 0.15s ease, width 0.2s ease;
+}
+.search-box input:focus {
+  border-color: var(--border-active);
+  width: 240px;
+}
+.search-box input::placeholder { color: var(--text-faint); }
+.search-box::before {
+  content: "⌕";
+  position: absolute;
+  left: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  pointer-events: none;
+}
 .path-nav {
   display: flex;
   align-items: center;
@@ -544,6 +575,7 @@ body {
   <button data-filter="pass">pass</button>
   <button class="on" data-filter="all">all</button>
   <button data-filter="nav">nav</button>
+  <div class="search-box"><input type="text" id="searchInput" placeholder="Search text..." /></div>
 </div>
 
 <div class="main">
@@ -582,6 +614,7 @@ const TARGET = "TARGET_URL";
 
 let data = null;
 let activeFilter = "all";
+let searchQuery = "";
 let selectedIdx = null;
 let deviceIdx = 0;
 let viewportZoom = 1;
@@ -915,18 +948,17 @@ function findBestMatchElement(doc, targetText, root = null) {
 
   const searchRoot = root || doc.body;
   const walker = doc.createTreeWalker(searchRoot, NodeFilter.SHOW_ELEMENT);
-  let partial = null;
+  let deepest = null;
 
   while (walker.nextNode()) {
     const el = walker.currentNode;
-    if (!(el instanceof HTMLElement)) continue;
+    if (el.nodeType !== 1) continue;
     const text = normalizeText(el.innerText || el.textContent || "");
     if (!text) continue;
-    if (text === wanted) return el;
-    if (!partial && text.includes(wanted)) partial = el;
+    if (text === wanted) deepest = el; // keep overwriting — last exact match is deepest
   }
 
-  return partial;
+  return deepest;
 }
 
 function findCheckElement(doc, target) {
@@ -1360,12 +1392,30 @@ document.getElementById("filters").addEventListener("click", (e) => {
   render();
 });
 
+// --- Search ---
+const searchInput = document.getElementById("searchInput");
+searchInput.addEventListener("input", () => {
+  searchQuery = searchInput.value.trim().toLowerCase();
+  selectedIdx = null;
+  deviceIdx = 0;
+  render();
+});
+
 // --- Render ---
 function filtered() {
   if (!data) return [];
-  if (activeFilter === "nav") return data.results;
-  if (activeFilter === "all") return data.results;
-  return data.results.filter(r => r.worst === activeFilter.toUpperCase());
+  let list = data.results;
+  if (activeFilter !== "nav" && activeFilter !== "all") {
+    list = list.filter(r => r.worst === activeFilter.toUpperCase());
+  }
+  if (searchQuery) {
+    list = list.filter(r =>
+      (r.text || "").toLowerCase().includes(searchQuery) ||
+      (r.label || "").toLowerCase().includes(searchQuery) ||
+      (r.page || "").toLowerCase().includes(searchQuery)
+    );
+  }
+  return list;
 }
 
 function buildCardsHTML(list) {
@@ -1385,7 +1435,7 @@ function buildCardsHTML(list) {
 
 function dataHash() {
   if (!data) return null;
-  return data.summary.fail + ":" + data.summary.warn + ":" + data.summary.pass + ":" + activeFilter;
+  return data.summary.fail + ":" + data.summary.warn + ":" + data.summary.pass + ":" + activeFilter + ":" + searchQuery;
 }
 
 function updateCounts() {

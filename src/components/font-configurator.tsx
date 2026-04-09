@@ -136,21 +136,11 @@ function clearConfig() {
 
 export function FontConfigurator() {
   const [open, setOpen] = useState(false);
-  const [config, setConfig] = useState<Config>(DEFAULTS);
+  const [config, setConfig] = useState<Config>(() => loadConfig());
   const panelRef = useRef<HTMLDivElement>(null);
-  const initialized = useRef(false);
-
-  // Load saved config on mount
-  useEffect(() => {
-    const saved = loadConfig();
-    setConfig(saved);
-    applyConfig(saved);
-    initialized.current = true;
-  }, []);
 
   // Apply whenever config changes (after init)
   useEffect(() => {
-    if (!initialized.current) return;
     applyConfig(config);
     saveConfig(config);
   }, [config]);

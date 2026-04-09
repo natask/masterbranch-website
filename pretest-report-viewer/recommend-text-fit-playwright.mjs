@@ -6,7 +6,6 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { chromium } from "playwright";
 import { buildResolvedConfig, loadConfig } from "./check-config.mjs";
-import { listSourceTargets } from "./source-targets.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -18,7 +17,7 @@ const args = Object.fromEntries(
 );
 
 const APP_URL = args.app || "http://localhost:3000";
-const APP_CMD = args["app-cmd"] || "npm run dev:local";
+const APP_CMD = args["app-cmd"] || "npm run dev";
 const APP_CWD = args["app-cwd"] || join(__dirname, "..");
 const CONFIG_PATH = args.config || join(__dirname, "pretext-check-config.json");
 const OUT_PATH = args.out || join(__dirname, "artifacts", "text-fit-recommendations.json");
@@ -89,31 +88,6 @@ function normalizePagePath(pagePath) {
   return pagePath.startsWith("/") ? pagePath : `/${pagePath}`;
 }
 
-function selectorTargetName(selector) {
-  return selector?.match(/data-pretext=['"]([^'"]+)['"]/)?.[1] || null;
-}
-
-function validateConfigAgainstSource(config, sourceTargets) {
-  const sourceTargetSet = new Set(sourceTargets);
-  const staleTargets = [];
-
-  for (const check of config.checks) {
-    const targetName = check.target || selectorTargetName(check.selector);
-    if (!targetName) continue;
-    if (!sourceTargetSet.has(targetName)) {
-      staleTargets.push({
-        label: check.label,
-        page: check.page,
-        target: targetName,
-      });
-    }
-  }
-
-  return {
-    sourceTargets,
-    staleTargets,
-  };
-}
 
 function classifyActual(check, metric, baselineLines) {
   if (!metric.hasText) return { status: "ABSENT", reason: "empty-text" };
@@ -538,16 +512,6 @@ async function main() {
   });
 
   const config = buildResolvedConfig(loadConfig(CONFIG_PATH));
-  const sourceTargets = listSourceTargets(join(__dirname, "..", "src"));
-  const configValidation = validateConfigAgainstSource(config, sourceTargets);
-  if (configValidation.staleTargets.length) {
-    console.error("Config references stale data-pretext targets:");
-    for (const item of configValidation.staleTargets) {
-      console.error(`- ${item.label} (${item.page}) -> ${item.target}`);
-    }
-    process.exitCode = 1;
-    return;
-  }
 
   const baselineBreakpoint = config.breakpoints.find((bp) => bp.name === (args.baseline || 'Laptop 16"'))
     || config.breakpoints[config.breakpoints.length - 1];
@@ -574,7 +538,6 @@ async function main() {
       total: nowMs() - totalStartMs,
       appStartup: appService.startupMs,
     },
-    configValidation,
     recommendations,
   };
 

@@ -160,7 +160,7 @@ export function FlashlightBackground({
   }, [set]);
 
   const glideTick = useCallback(
-    (now: number) => {
+    function tick(now: number) {
       const t = Math.min((now - glideT0.current) / GLIDE_MS, 1);
       const e = 1 - (1 - t) * (1 - t) * (1 - t);
       const x = glideFrom.current.x + (cursor.current.x - glideFrom.current.x) * e;
@@ -172,7 +172,7 @@ export function FlashlightBackground({
       }
       set(x, y);
       if (t < 1) {
-        rafId.current = requestAnimationFrame(glideTick);
+        rafId.current = requestAnimationFrame(tick);
       } else {
         endGlide();
       }

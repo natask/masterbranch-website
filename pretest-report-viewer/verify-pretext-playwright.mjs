@@ -17,7 +17,7 @@ const args = Object.fromEntries(
 
 const APP_URL = args.app || "http://localhost:3000";
 const RUNNER_URL = args.runner || "http://localhost:4444";
-const APP_CMD = args["app-cmd"] || "npm run dev:local";
+const APP_CMD = args["app-cmd"] || "npm run dev";
 const APP_CWD = args["app-cwd"] || join(__dirname, "..");
 const OUT_PATH = args.out || join(__dirname, "artifacts", "pretext-playwright-verify.json");
 const HEADLESS = args.headed !== "true";

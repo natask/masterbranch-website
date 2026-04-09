@@ -17,7 +17,7 @@ const args = Object.fromEntries(
 );
 
 const APP_URL = args.app || "http://localhost:3000";
-const APP_CMD = args["app-cmd"] || "npm run dev:local";
+const APP_CMD = args["app-cmd"] || "npm run dev";
 const APP_CWD = args["app-cwd"] || join(__dirname, "..");
 const CONFIG_PATH = args.config || join(__dirname, "pretext-check-config.json");
 const OUT_PATH = args.out || join(__dirname, "artifacts", "text-playwright-verify.json");
@@ -294,11 +294,10 @@ async function collectRouteInventory(page, pagePath) {
       return `body > ${segments.join(" > ")}`;
     }
 
-    function labelText(selector, text, target) {
-      if (target) return target;
+    function labelText(selector, text) {
+      if (text) return text.length > 60 ? `${text.slice(0, 57)}...` : text;
       if (selector) return selector.replace(/^body > /, "");
-      if (!text) return "text";
-      return text.length > 80 ? `${text.slice(0, 77)}...` : text;
+      return "text";
     }
 
     const candidates = [];
@@ -314,28 +313,14 @@ async function collectRouteInventory(page, pagePath) {
       const textRects = textRectsFor(el);
       if (!textRects.length) continue;
 
-      if (!el.dataset.pretext && !TEXT_TAGS.has(el.tagName)) continue;
+      if (!TEXT_TAGS.has(el.tagName)) continue;
 
-      const ancestorPretext = el.parentElement?.closest("[data-pretext]") || null;
-      if (
-        !el.dataset.pretext &&
-        ancestorPretext &&
-        normalizeText(ancestorPretext.innerText || ancestorPretext.textContent || "") === text
-      ) {
-        continue;
-      }
-
+      // Skip if a child element was already included — keep leaf text only.
       const childIncluded = Array.from(el.children).some(child => included.has(child));
-      const hasNestedPretextChild = !!el.querySelector("[data-pretext]");
-
-      if (childIncluded) {
-        if (!el.dataset.pretext) continue;
-        if (hasNestedPretextChild) continue;
-      }
+      if (childIncluded) continue;
 
       el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
 
-      const target = el.dataset.pretext || null;
       const selector = selectorFor(el);
       const scrolledTextRects = textRectsFor(el);
       const elementRect = el.getBoundingClientRect();
@@ -343,13 +328,12 @@ async function collectRouteInventory(page, pagePath) {
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
       const clipping = clippingAgainstAncestors(rect, el);
-      const keyBase = target ? `target:${target}` : `selector:${selector}`;
+      const keyBase = `selector:${selector}`;
 
       candidates.push({
         key: `${currentPagePath}@@${keyBase}`,
-        label: `${currentPagePath} :: ${labelText(selector, text, target)}`,
+        label: `${currentPagePath} :: ${labelText(selector, text)}`,
         page: currentPagePath,
-        target,
         selector,
         tagName: el.tagName.toLowerCase(),
         text,
@@ -459,9 +443,20 @@ async function measureKnownChecks(page, checks) {
         } catch {}
       }
 
-      if (check.target) {
-        const selected = document.querySelector(`[data-pretext="${check.target.replace(/["\\]/g, "\\$&")}"]`);
-        if (selected instanceof HTMLElement) return selected;
+      // Fallback: match by text content — find the deepest exact match
+      if (check.text) {
+        const wanted = normalizeText(check.text);
+        if (wanted) {
+          const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
+          let deepest = null;
+          while (walker.nextNode()) {
+            const el = walker.currentNode;
+            if (!(el instanceof HTMLElement)) continue;
+            const elText = normalizeText(el.innerText || el.textContent || "");
+            if (elText === wanted) deepest = el; // keep overwriting — tree walk is top-down, so last exact match is deepest
+          }
+          if (deepest) return deepest;
+        }
       }
 
       return null;
@@ -588,7 +583,6 @@ async function collectDomMetrics(projectConfig, routes) {
           key: candidate.key,
           label: candidate.label,
           page: candidate.page,
-          target: candidate.target,
           selector: candidate.selector,
           text: candidate.text,
           tagName: candidate.tagName,
@@ -624,7 +618,7 @@ async function collectDomMetrics(projectConfig, routes) {
         const metrics = await measureKnownChecks(page, routeChecks.map(check => ({
           key: check.key,
           selector: check.selector,
-          target: check.target,
+          text: check.text,
         })));
         perf.totalEvaluateMs += nowMs() - measureStartMs;
 
@@ -641,7 +635,6 @@ async function collectDomMetrics(projectConfig, routes) {
             key: check.key,
             label: check.label,
             page: check.page,
-            target: check.target,
             selector: check.selector,
             tagName: check.tagName,
           });
@@ -715,7 +708,6 @@ function summarizeResults(projectConfig, discoveredChecks, routeVisits, inventor
       key: check.key,
       label: check.label,
       page: check.page,
-      target: check.target,
       selector: check.selector,
       text: check.text,
       tagName: check.tagName,
