@@ -46,7 +46,7 @@ export default function RootLayout({
         <QueryProvider>
           <LayoutShell>{children}</LayoutShell>
         </QueryProvider>
-        <FontConfigurator />
+        {process.env.NODE_ENV === "development" && <FontConfigurator />}
       </body>
     </html>
   );
