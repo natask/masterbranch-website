@@ -77,19 +77,19 @@ export const landingCopy: LandingCopy = {
     },
     {
       id: "builder-path",
-      heading: "Scratch\nyour own itch",
+      heading: "Scratch\nyour Own Itch",
       blocks: [
         { type: "call-response", prompt: "Software annoying you?", answer: "Clone it." },
         { type: "call-response", prompt: "Workflow broken?", answer: "Fix it." },
         { type: "call-response", prompt: "Tool missing?", answer: "Build it." },
         { type: "statement", text: "If others need it too, even ***better***." },
-        { type: "statement", text: "No one else will solve\nyour problems\nyour *way*", tone: "gold" },
+        { type: "statement", text: "No one will solve\nyour problems\nyour way", tone: "gold" },
       ],
     },
   ],
 
   nights: {
-    heading: "Tue · Thu · Sun\nFour Hours",
+    heading: "Every Day\nFour Hours",
     steps: [
       { num: "01", title: "Arrive", time: "6:00", desc: "Ready to build." },
       { num: "02", title: "Build", time: "10:00", desc: "Heads down." },
