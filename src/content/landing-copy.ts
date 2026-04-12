@@ -89,7 +89,7 @@ export const landingCopy: LandingCopy = {
   ],
 
   nights: {
-    heading: "Every Day\nFour Hours",
+    heading: "Every Week\nFour Hours",
     steps: [
       { num: "01", title: "Arrive", time: "6:00", desc: "Ready to build." },
       { num: "02", title: "Build", time: "10:00", desc: "Heads down." },
