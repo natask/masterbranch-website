@@ -60,7 +60,7 @@ export type LandingCopy = {
 export const landingCopy: LandingCopy = {
   hero: {
     location: "San Francisco",
-    tagline: "Build what you need.",
+    tagline: "Ship to Master AI.",
   },
 
   sections: [

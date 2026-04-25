@@ -8,7 +8,7 @@ import "./globals.css";
 import { QueryProvider } from "@/components/query-provider";
 import { FontConfigurator } from "@/components/font-configurator";
 import { LayoutShell } from "@/components/layout-shell";
-import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/config";
+import { SITE_DESCRIPTION, SITE_DOMAIN, SITE_NAME } from "@/lib/config";
 
 const cormorant = Cormorant_Garamond({
   variable: "--font-cormorant",
@@ -29,8 +29,21 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(`https://${SITE_DOMAIN}`),
   title: SITE_NAME,
   description: SITE_DESCRIPTION,
+  openGraph: {
+    type: "website",
+    url: `https://${SITE_DOMAIN}`,
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+  },
 };
 
 export default function RootLayout({
