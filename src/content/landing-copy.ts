@@ -60,7 +60,7 @@ export type LandingCopy = {
 export const landingCopy: LandingCopy = {
   hero: {
     location: "San Francisco",
-    tagline: "Ship to Master AI.",
+    tagline: "Build something you need",
   },
 
   sections: [
@@ -89,11 +89,11 @@ export const landingCopy: LandingCopy = {
   ],
 
   nights: {
-    heading: "Every Week\nFour Hours",
+    heading: "Every Saturday\nFour Hours",
     steps: [
-      { num: "01", title: "Arrive", time: "6:00", desc: "Ready to build." },
-      { num: "02", title: "Build", time: "10:00", desc: "Heads down." },
-      { num: "03", title: "Demo", time: "10:00+", desc: "What you have." },
+      { num: "01", title: "Arrive", time: "4:00", desc: "Ready to build." },
+      { num: "02", title: "Build", time: "8:00", desc: "Heads down." },
+      { num: "03", title: "Demo", time: "8:00+", desc: "What you have." },
     ],
   },
 

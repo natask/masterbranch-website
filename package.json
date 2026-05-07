@@ -6,7 +6,7 @@
     "dev": "next dev",
     "dev:cf": "node scripts/dev-cf.mjs",
     "dev:cf:smart": "node scripts/dev-cf-smart.mjs",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
@@ -14,10 +14,10 @@
     "textlint:verify:headed": "node pretest-report-viewer/verify-text-playwright.mjs --headed=true",
     "textlint:verify:strict": "node pretest-report-viewer/verify-text-playwright.mjs --fail-on-warn=true",
     "build:cf": "opennextjs-cloudflare build",
+    "stub:vercel-og": "node scripts/stub-vercel-og.js",
     "deploy:landing": "git checkout landing && pnpm run build:cf && wrangler deploy --env landing",
     "deploy:full": "git checkout full-featured && pnpm run build:cf && wrangler deploy --env full",
-    "deploy:canary": "git checkout canary && pnpm run build:cf && wrangler deploy --env canary",
-    "postinstall": "node scripts/stub-vercel-og.js"
+    "deploy:canary": "git checkout canary && pnpm run build:cf && wrangler deploy --env canary"
   },
   "dependencies": {
     "@neondatabase/auth": "^0.2.0-beta.1",

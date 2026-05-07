@@ -1,32 +1,16 @@
 import type { Metadata } from "next";
-import {
-  Cormorant_Garamond,
-  Cinzel,
-  JetBrains_Mono,
-} from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/components/query-provider";
 import { FontConfigurator } from "@/components/font-configurator";
 import { LayoutShell } from "@/components/layout-shell";
 import { SITE_DESCRIPTION, SITE_DOMAIN, SITE_NAME } from "@/lib/config";
 
-const cormorant = Cormorant_Garamond({
-  variable: "--font-cormorant",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-});
-
-const cinzel = Cinzel({
-  variable: "--font-cinzel",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-});
+const ogImage = {
+  url: "/og.png",
+  width: 1200,
+  height: 630,
+  alt: SITE_DESCRIPTION,
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(`https://${SITE_DOMAIN}`),
@@ -38,11 +22,13 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
+    images: [ogImage],
   },
   twitter: {
     card: "summary_large_image",
     title: SITE_NAME,
     description: SITE_DESCRIPTION,
+    images: [ogImage],
   },
 };
 
@@ -53,9 +39,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body
-        className={`${cormorant.variable} ${cinzel.variable} ${jetbrainsMono.variable} appear-1 antialiased flex min-h-screen flex-col`}
-      >
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Cormorant+Garamond:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap"
+        />
+      </head>
+      <body className="appear-1 antialiased flex min-h-screen flex-col">
         <QueryProvider>
           <LayoutShell>{children}</LayoutShell>
         </QueryProvider>
