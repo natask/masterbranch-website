@@ -172,7 +172,7 @@ function CardItem({
               />
             ) : (
               <img
-                src="/icon.png"
+                src="/icon.svg"
                 alt="Branch icon"
                 className="h-16 w-16 opacity-20 select-none"
               />

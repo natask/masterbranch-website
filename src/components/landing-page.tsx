@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState } from "react";
+import Image from "next/image";
 import { COMMUNITY_URL } from "@/lib/config";
 import { Nav } from "@/components/nav";
 import { landingCopy } from "@/content/landing-copy";
@@ -192,6 +193,17 @@ export function LandingPage() {
             <p className="font-cinzel fluid-xs font-medium uppercase tracking-[0.35em] text-gold/60">
               {landingCopy.hero.location}
             </p>
+          </FadeIn>
+
+          <FadeIn delay={0.05}>
+            <Image
+              src="/icon.png"
+              alt="Masterbranch emblem"
+              width={512}
+              height={512}
+              priority
+              className="mx-auto mt-8 h-36 w-36 object-contain drop-shadow-[0_0_42px_rgba(201,165,92,0.20)] sm:h-44 sm:w-44 md:h-56 md:w-56 lg:h-64 lg:w-64"
+            />
           </FadeIn>
 
           <FadeIn delay={0.1}>

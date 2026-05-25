@@ -64,7 +64,7 @@ export function ProjectDetailModal({
           </div>
         ) : (
           <div className="flex h-32 w-full items-center justify-center bg-secondary">
-            <img src="/icon.png" alt="Branch icon" className="h-16 w-16 opacity-20" />
+            <img src="/icon.svg" alt="Branch icon" className="h-16 w-16 opacity-20" />
           </div>
         )}
 
