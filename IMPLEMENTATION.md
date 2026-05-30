@@ -294,6 +294,7 @@ Content sections (drawn from `well_argued_description.md` and `4__on_your_mind/p
 > - Grow Together: meet top-tier engineers, level up collectively
 
 ### Section 5: The Details
+> - No Sponsors. Only independent brains engaging in creative expression.
 > - Weekly Hacking. Every Sunday.
 > - Retreats Every 8 Weeks.
 > - Self-Funded. Laptop + ideas + energy.

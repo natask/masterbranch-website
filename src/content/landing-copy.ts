@@ -68,11 +68,9 @@ export const landingCopy: LandingCopy = {
       id: "manifesto",
       heading: "Engineering\nGym",
       blocks: [
-        { type: "statement", text: "For those who solve their problems." },
-        { type: "statement", text: "For those who make their ideas real." },
+        { type: "statement", text: "For those who solve their own problems." },
         { type: "statement", text: "For those who trade *candid* feedback." },
-        { type: "statement", text: "For those who learn by doing." },
-        { type: "statement", text: "For those who crave the company of peers", tone: "gold" },
+        { type: "statement", text: "For those who want formidable peers.", tone: "gold" },
       ],
     },
     {
@@ -99,6 +97,7 @@ export const landingCopy: LandingCopy = {
 
   principles: [
     { title: "No BS", desc: "Only what was built and how." },
+    { title: "No Sponsors", desc: "Only independent brains engaging in creative expression." },
     { title: "No Excuses", desc: "Only unbridled ambition." },
   ],
 
