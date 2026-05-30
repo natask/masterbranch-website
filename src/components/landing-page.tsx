@@ -198,7 +198,7 @@ export function LandingPage() {
               width={96}
               height={96}
               priority
-              className="mx-auto mb-5 h-[44px] w-[44px] object-contain drop-shadow-[0_0_20px_rgba(201,165,92,0.18)] sm:h-[52px] sm:w-[52px] md:h-[60px] md:w-[60px]"
+              className="landing-hero-icon mx-auto mb-5 h-[44px] w-[44px] object-contain drop-shadow-[0_0_20px_rgba(201,165,92,0.18)] sm:h-[52px] sm:w-[52px] md:h-[60px] md:w-[60px]"
             />
           </FadeIn>
 

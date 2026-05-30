@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:next": "SKIP_CF_DEV=1 next dev",
+    "viewport:lab": "node scripts/viewport-lab.mjs",
     "dev:cf": "node scripts/dev-cf.mjs",
     "dev:cf:smart": "node scripts/dev-cf-smart.mjs",
     "build": "next build --webpack",

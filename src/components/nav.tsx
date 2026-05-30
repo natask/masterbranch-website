@@ -22,7 +22,7 @@ export function SocialNavLink() {
       rel="noopener noreferrer"
       className="flex items-center gap-2 text-sm text-white/60 transition-colors hover:text-gold"
     >
-      <XIcon className="h-4 w-4" />
+      <XIcon className="topbar-social-icon h-4 w-4" />
     </a>
   );
 }

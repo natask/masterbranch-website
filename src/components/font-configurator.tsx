@@ -32,10 +32,14 @@ type Config = {
   topbarTracking: number;
   topbarGap: number;
   topbarLogoSize: number;
+  socialIconSize: number;
   monoSize: number;
   textBrightness: number;
   cardTextBrightness: number;
   heroTitleLayout: HeroTitleLayout;
+  heroIconSize: number;
+  heroIconY: number;
+  heroIconGap: number;
   heroTitleTracking: number;
   heroTitleScale: number;
   heroContentY: number;
@@ -66,6 +70,20 @@ type Config = {
   heroWhite: string;
 };
 
+const EFFECT_DEFAULTS: Pick<Config, "heroGradient" | "heroDither" | "heroEffectScope"> = {
+  heroGradient: 0,
+  heroDither: 3,
+  heroEffectScope: "page",
+};
+
+const ICON_DEFAULTS: Pick<Config, "topbarLogoSize" | "socialIconSize" | "heroIconSize" | "heroIconY" | "heroIconGap"> = {
+  topbarLogoSize: 44,
+  socialIconSize: 24,
+  heroIconSize: 72,
+  heroIconY: 0,
+  heroIconGap: 20,
+};
+
 const DEFAULTS: Config = {
   textFont: "cormorant",
   rootSize: 28,
@@ -88,11 +106,15 @@ const DEFAULTS: Config = {
   topbarWeight: 600,
   topbarTracking: 0.05,
   topbarGap: 20,
-  topbarLogoSize: 36,
+  topbarLogoSize: ICON_DEFAULTS.topbarLogoSize,
+  socialIconSize: ICON_DEFAULTS.socialIconSize,
   monoSize: 14,
   textBrightness: 65,
   cardTextBrightness: 85,
   heroTitleLayout: "2-line",
+  heroIconSize: ICON_DEFAULTS.heroIconSize,
+  heroIconY: ICON_DEFAULTS.heroIconY,
+  heroIconGap: ICON_DEFAULTS.heroIconGap,
   heroTitleTracking: 0.04,
   heroTitleScale: 100,
   heroContentY: 0,
@@ -111,27 +133,48 @@ const DEFAULTS: Config = {
   heroTaglineY: 0,
   heroTaglineWeight: 400,
   heroTaglineTracking: 0,
-  heroGradient: 70,
-  heroDither: 0,
+  heroGradient: EFFECT_DEFAULTS.heroGradient,
+  heroDither: EFFECT_DEFAULTS.heroDither,
   heroDitherStyle: "blueNoise",
   heroDitherSize: 1.1,
   heroDitherPrecision: 2.5,
-  heroEffectScope: "hero",
+  heroEffectScope: EFFECT_DEFAULTS.heroEffectScope,
   heroNoise: 0,
   heroBase: "#07060a",
   heroGold: "#c9a55c",
   heroWhite: "#fff7df",
 };
 
-const STORAGE_KEY = "masterbranch-hero-config-v4";
-const LEGACY_STORAGE_KEY = "masterbranch-font-config";
+const STORAGE_KEY = "masterbranch-hero-config-v6";
+const LEGACY_STORAGE_KEYS = ["masterbranch-hero-config-v5", "masterbranch-hero-config-v4", "masterbranch-font-config"];
+
+function parseStoredConfig(raw: string, forceEffectDefaults = false, forceIconDefaults = false): Config {
+  const stored = JSON.parse(raw) as Partial<Config>;
+  const config = { ...DEFAULTS, ...stored, ...(forceEffectDefaults ? EFFECT_DEFAULTS : {}) };
+
+  if (forceIconDefaults) {
+    if (stored.topbarLogoSize === undefined || stored.topbarLogoSize === 36) config.topbarLogoSize = ICON_DEFAULTS.topbarLogoSize;
+    if (stored.socialIconSize === undefined) config.socialIconSize = ICON_DEFAULTS.socialIconSize;
+    if (stored.heroIconSize === undefined) config.heroIconSize = ICON_DEFAULTS.heroIconSize;
+    if (stored.heroIconY === undefined) config.heroIconY = ICON_DEFAULTS.heroIconY;
+    if (stored.heroIconGap === undefined) config.heroIconGap = ICON_DEFAULTS.heroIconGap;
+  }
+
+  return config;
+}
 
 function loadConfig(): Config {
   if (typeof window === "undefined") return DEFAULTS;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (!raw) return DEFAULTS;
-    return { ...DEFAULTS, ...JSON.parse(raw) };
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return parseStoredConfig(raw);
+
+    for (const key of LEGACY_STORAGE_KEYS) {
+      const legacy = localStorage.getItem(key);
+      if (legacy) return parseStoredConfig(legacy, key !== "masterbranch-hero-config-v5", true);
+    }
+
+    return DEFAULTS;
   } catch {
     return DEFAULTS;
   }
@@ -196,6 +239,10 @@ function applyConfig(c: Config) {
       height: ${c.topbarLogoSize}px !important;
       filter: none !important;
     }
+    .topbar-social-icon {
+      width: ${c.socialIconSize}px !important;
+      height: ${c.socialIconSize}px !important;
+    }
     .landing-body-text {
       font-size: ${c.bodyTextSize}px !important;
       font-weight: ${c.bodyWeight} !important;
@@ -218,6 +265,7 @@ function applyConfig(c: Config) {
 
   const effectTarget = c.heroEffectScope === "page" ? "body" : "#hero";
   const contentZIndex = c.heroEffectScope === "page" ? "auto" : "1";
+  const effectZIndex = c.heroEffectScope === "page" ? "60" : "0";
   const pct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
   const alpha = (value: number) => Math.max(0, Math.min(0.72, value));
   const dotAlpha = alpha(c.heroDither / 140);
@@ -261,14 +309,14 @@ function applyConfig(c: Config) {
     }
 
     ${effectTarget}::before {
-      z-index: 0;
+      z-index: ${effectZIndex};
       opacity: ${alpha(c.heroNoise / 160)};
       mix-blend-mode: soft-light;
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.92' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.72'/%3E%3C/svg%3E");
     }
 
     ${effectTarget}::after {
-      z-index: 0;
+      z-index: ${effectZIndex};
       opacity: 1;
       background-image: ${ditherPattern};
       background-size: ${ditherSize};
@@ -280,6 +328,12 @@ function applyConfig(c: Config) {
       z-index: ${contentZIndex};
     }
 
+    #hero .landing-hero-icon {
+      width: ${c.heroIconSize}px !important;
+      height: ${c.heroIconSize}px !important;
+      margin-bottom: ${c.heroIconGap}px !important;
+      transform: translateY(${c.heroIconY}px) !important;
+    }
     #hero .landing-hero-content { transform: translateY(${c.heroContentY}px) !important; }
     #hero .landing-hero-topline {
       font-size: ${c.heroToplineSize}px !important;
@@ -315,19 +369,36 @@ function clearConfig() {
   if (el) el.textContent = "";
   try {
     localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(LEGACY_STORAGE_KEY);
+    for (const key of LEGACY_STORAGE_KEYS) localStorage.removeItem(key);
   } catch {}
 }
 
 export function FontConfigurator() {
   const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [config, setConfig] = useState<Config>(() => loadConfig());
   const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const isPreviewFrame = new URLSearchParams(window.location.search).has("viewportFrame");
+    document.documentElement.classList.toggle("viewport-frame", isPreviewFrame);
+    return () => document.documentElement.classList.remove("viewport-frame");
+  }, []);
 
   useEffect(() => {
     applyConfig(config);
     saveConfig(config);
   }, [config]);
+
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.storageArea !== localStorage) return;
+      if (e.key !== STORAGE_KEY && !LEGACY_STORAGE_KEYS.includes(e.key ?? "")) return;
+      setConfig(loadConfig());
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -351,15 +422,24 @@ export function FontConfigurator() {
     applyConfig(DEFAULTS);
   }, []);
 
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify({ storageKey: STORAGE_KEY, config }, null, 2));
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {}
+  }, [config]);
+
   if (!open) {
-    return <button onClick={() => setOpen(true)} style={fabStyle} title="Font Configurator (Cmd+Shift+F)">Aa</button>;
+    return <button className="font-configurator-fab" onClick={() => setOpen(true)} style={fabStyle} title="Font Configurator (Cmd+Shift+F)">Aa</button>;
   }
 
   return (
-    <div ref={panelRef} style={panelStyle}>
+    <div ref={panelRef} className="font-configurator-panel" style={panelStyle}>
       <div style={headerStyle}>
         <span style={titleStyle}>Hero Configurator</span>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button onClick={handleCopy} style={resetBtnStyle}>{copied ? "Copied" : "Copy"}</button>
           <button onClick={handleReset} style={resetBtnStyle}>Reset</button>
           <button onClick={() => setOpen(false)} style={closeBtnStyle}>&times;</button>
         </div>
@@ -368,7 +448,7 @@ export function FontConfigurator() {
       <Section title="Hero Effects" subtitle="Gradient, noise, dither">
         <Segmented label="Scope" value={config.heroEffectScope} options={["hero", "page"]} onChange={(v) => update("heroEffectScope", v as EffectScope)} />
         <Slider label="Gradient" value={config.heroGradient} onChange={(v) => update("heroGradient", v)} min={0} max={100} step={5} unit="%" />
-        <Slider label="Dither" value={config.heroDither} onChange={(v) => update("heroDither", v)} min={0} max={100} step={5} unit="%" />
+        <Slider label="Dither" value={config.heroDither} onChange={(v) => update("heroDither", v)} min={0} max={100} step={1} unit="%" />
         <Segmented label="Dither" value={config.heroDitherStyle} options={["blueNoise", "dot", "halftone"]} onChange={(v) => update("heroDitherStyle", v as DitherStyle)} />
         <Slider label="Dot size" value={config.heroDitherSize} onChange={(v) => update("heroDitherSize", v)} min={0.3} max={2.4} step={0.1} unit="px" />
         <Slider label="Precision" value={config.heroDitherPrecision} onChange={(v) => update("heroDitherPrecision", v)} min={1.5} max={12} step={0.5} unit="px" />
@@ -376,6 +456,14 @@ export function FontConfigurator() {
         <ColorInput label="Black" value={config.heroBase} onChange={(v) => update("heroBase", v)} />
         <ColorInput label="Gold" value={config.heroGold} onChange={(v) => update("heroGold", v)} />
         <ColorInput label="White" value={config.heroWhite} onChange={(v) => update("heroWhite", v)} />
+      </Section>
+
+      <Section title="Icons" subtitle="Top nav and hero marks">
+        <Slider label="Nav mark" value={config.topbarLogoSize} onChange={(v) => update("topbarLogoSize", v)} min={24} max={72} step={1} unit="px" />
+        <Slider label="Social" value={config.socialIconSize} onChange={(v) => update("socialIconSize", v)} min={14} max={40} step={1} unit="px" />
+        <Slider label="Hero mark" value={config.heroIconSize} onChange={(v) => update("heroIconSize", v)} min={32} max={140} step={2} unit="px" />
+        <Slider label="Hero Y" value={config.heroIconY} onChange={(v) => update("heroIconY", v)} min={-80} max={80} step={2} unit="px" />
+        <Slider label="Hero gap" value={config.heroIconGap} onChange={(v) => update("heroIconGap", v)} min={0} max={80} step={1} unit="px" />
       </Section>
 
       <Section title="Hero Layout" subtitle="Direct layer controls">
@@ -401,7 +489,6 @@ export function FontConfigurator() {
       </Section>
 
       <Section title="Top Bar" subtitle="Logo, nav text, spacing">
-        <Slider label="Logo" value={config.topbarLogoSize} onChange={(v) => update("topbarLogoSize", v)} min={24} max={56} step={1} unit="px" />
         <Slider label="Size" value={config.topbarSize} onChange={(v) => update("topbarSize", v)} min={10} max={28} step={1} unit="px" />
         <Slider label="Weight" value={config.topbarWeight} onChange={(v) => update("topbarWeight", v)} min={300} max={900} step={100} unit="" />
         <Slider label="Tracking" value={config.topbarTracking} onChange={(v) => update("topbarTracking", v)} min={-0.04} max={0.2} step={0.005} unit="em" />

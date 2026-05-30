@@ -50,6 +50,8 @@ next-env.d.ts
 /.agents/
 /.chat/
 /.claude/
+.context/
+scratch/
 .gstack/
 
 # build baselines

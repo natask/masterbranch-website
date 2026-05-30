@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
 };
 
 export default (async () => {
-  if (process.env.NODE_ENV === "development") {
+  if (process.env.NODE_ENV === "development" && process.env.SKIP_CF_DEV !== "1") {
     const { initOpenNextCloudflareForDev } = await import("@opennextjs/cloudflare");
     await initOpenNextCloudflareForDev();
   }

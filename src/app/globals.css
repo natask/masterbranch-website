@@ -137,7 +137,81 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-cormorant), Georgia, serif;
+    position: relative;
+    isolation: isolate;
   }
+}
+
+/* ---- Page-wide dither overlay: 3% blue-noise, no gradient ---- */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 1;
+  mix-blend-mode: screen;
+  background-image:
+    radial-gradient(circle at 15% 18%, rgba(255, 255, 255, 0.021) 0 1.1px, transparent 1.45px),
+    radial-gradient(circle at 42% 9%, rgba(255, 255, 255, 0.021) 0 1.1px, transparent 1.45px),
+    radial-gradient(circle at 76% 22%, rgba(255, 255, 255, 0.021) 0 1.1px, transparent 1.45px),
+    radial-gradient(circle at 91% 48%, rgba(255, 255, 255, 0.021) 0 1.1px, transparent 1.45px),
+    radial-gradient(circle at 58% 61%, rgba(255, 255, 255, 0.021) 0 1.1px, transparent 1.45px),
+    radial-gradient(circle at 24% 72%, rgba(255, 255, 255, 0.021) 0 1.1px, transparent 1.45px),
+    radial-gradient(circle at 8% 91%, rgba(255, 255, 255, 0.021) 0 1.1px, transparent 1.45px),
+    radial-gradient(circle at 69% 88%, rgba(255, 255, 255, 0.021) 0 1.1px, transparent 1.45px),
+    radial-gradient(circle at 34% 38%, rgba(255, 255, 255, 0.021) 0 1.1px, transparent 1.45px),
+    radial-gradient(circle at 83% 74%, rgba(255, 255, 255, 0.021) 0 1.1px, transparent 1.45px),
+    radial-gradient(circle at 51% 29%, rgba(255, 255, 255, 0.021) 0 1.1px, transparent 1.45px),
+    radial-gradient(circle at 4% 55%, rgba(255, 255, 255, 0.021) 0 1.1px, transparent 1.45px),
+    radial-gradient(circle at 96% 6%, rgba(255, 255, 255, 0.021) 0 1.1px, transparent 1.45px),
+    radial-gradient(circle at 63% 43%, rgba(255, 255, 255, 0.021) 0 1.1px, transparent 1.45px),
+    radial-gradient(circle at 18% 49%, rgba(255, 255, 255, 0.021) 0 1.1px, transparent 1.45px),
+    radial-gradient(circle at 47% 82%, rgba(255, 255, 255, 0.021) 0 1.1px, transparent 1.45px);
+  background-size:
+    20px 20px,
+    20px 20px,
+    20px 20px,
+    20px 20px,
+    20px 20px,
+    20px 20px,
+    20px 20px,
+    20px 20px,
+    20px 20px,
+    20px 20px,
+    20px 20px,
+    20px 20px,
+    20px 20px,
+    20px 20px,
+    20px 20px,
+    20px 20px;
+}
+
+html.viewport-frame .font-configurator-fab,
+html.viewport-frame .font-configurator-panel {
+  display: none !important;
+}
+
+/* ---- Deployment icon defaults; final values can be pulled from the configurator ---- */
+.topbar-nav {
+  min-height: max(44px, calc(44px + 10px));
+}
+
+.topbar-logo {
+  width: 44px;
+  height: 44px;
+  filter: none;
+}
+
+.topbar-social-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.landing-hero-icon {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 20px;
 }
 
 /* ---- Custom utilities ---- */
