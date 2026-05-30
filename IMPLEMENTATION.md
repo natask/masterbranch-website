@@ -278,7 +278,7 @@ Content sections (drawn from `well_argued_description.md` and `4__on_your_mind/p
 > - We command, we master our agents to bring our ideas to fruition.
 > - Cooperation isn't the opposite of competition, it's how you win.
 > - The metric isn't applause, it's adoption.
-> - No BS. Only the facts on what was built and how.
+> - No BS. Only proof and implementation.
 
 ### Section 3: How It Works
 > Weekly Sundai sessions: 1 PM - 5 PM (4 hours of rapid prototyping)
@@ -294,7 +294,7 @@ Content sections (drawn from `well_argued_description.md` and `4__on_your_mind/p
 > - Grow Together: meet top-tier engineers, level up collectively
 
 ### Section 5: The Details
-> - No Sponsors. Only independent brains engaging in creative expression.
+> - No Sponsors. Only engineers building without permission.
 > - Weekly Hacking. Every Sunday.
 > - Retreats Every 8 Weeks.
 > - Self-Funded. Laptop + ideas + energy.

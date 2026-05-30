@@ -70,16 +70,16 @@ export const landingCopy: LandingCopy = {
       blocks: [
         { type: "statement", text: "For those who solve their own problems." },
         { type: "statement", text: "For those who trade *candid* feedback." },
-        { type: "statement", text: "For those who want formidable peers.", tone: "gold" },
+        { type: "statement", text: "For those sharpened by formidable peers.", tone: "gold" },
       ],
     },
     {
       id: "builder-path",
       heading: "Scratch\nyour Own Itch",
       blocks: [
-        { type: "call-response", prompt: "Software annoying you?", answer: "Clone it." },
-        { type: "call-response", prompt: "Workflow broken?", answer: "Fix it." },
-        { type: "call-response", prompt: "Tool missing?", answer: "Build it." },
+        { type: "call-response", prompt: "That product you wish existed but continues to elude you?", answer: "Build it." },
+        { type: "call-response", prompt: "That shitty software that keeps fighting you?", answer: "Conquer it." },
+        { type: "call-response", prompt: "That idea that keeps nagging you?", answer: "Try it." },
         { type: "statement", text: "If others need it too, even ***better***." },
         { type: "statement", text: "No one will solve\nyour problems\nyour way", tone: "gold" },
       ],
@@ -96,8 +96,8 @@ export const landingCopy: LandingCopy = {
   },
 
   principles: [
-    { title: "No BS", desc: "Only what was built and how." },
-    { title: "No Sponsors", desc: "Only independent brains engaging in creative expression." },
+    { title: "No BS", desc: "Only proof and implementation." },
+    { title: "No Sponsors", desc: "Only engineers building without permission." },
     { title: "No Excuses", desc: "Only unbridled ambition." },
   ],
 
