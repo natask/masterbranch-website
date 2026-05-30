@@ -36,39 +36,39 @@ export function Nav({ showBrandName = true, variant = "app" }: NavProps = {}) {
   const { data: session, isPending } = useSession();
 
   return (
-    <nav className="sticky top-0 z-50 h-[6vh] border-b border-border/50 bg-background/80 backdrop-blur-xl">
+    <nav className="topbar-nav sticky top-0 z-50 h-[6vh] min-h-[44px] border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-full max-w-7xl items-center justify-between px-6">
-        <div className="flex items-center gap-3">
+        <div className="topbar-brand-group flex items-center gap-3">
           <Logo />
           {showBrandName ? (
-            <span className="hidden font-cinzel text-sm font-semibold tracking-wider text-white sm:inline">
+            <span className="topbar-text hidden font-cinzel text-sm font-semibold tracking-wider text-white sm:inline">
               {SITE_NAME}
             </span>
           ) : null}
         </div>
 
-        <div className="flex items-center gap-5">
+        <div className="topbar-link-group flex items-center gap-5">
           {variant === "landing" ? (
             <SocialNavLink />
           ) : (
             <>
-              <Link href="/about" className="text-sm text-white transition-colors hover:text-white/80">
+              <Link href="/about" className="topbar-text text-sm text-white transition-colors hover:text-white/80">
                 About
               </Link>
               {session ? (
-                <div className="appear-auth flex items-center gap-5">
-                  <Link href="/dashboard" className="text-sm text-white transition-colors hover:text-white/80">
+                <div className="topbar-link-group appear-auth flex items-center gap-5">
+                  <Link href="/dashboard" className="topbar-text text-sm text-white transition-colors hover:text-white/80">
                     Dashboard
                   </Link>
                   <div className="h-4 w-px bg-border" />
-                  <button onClick={() => signOut()} className="text-sm text-white transition-colors hover:text-white/80">
+                  <button onClick={() => signOut()} className="topbar-text text-sm text-white transition-colors hover:text-white/80">
                     Sign out
                   </button>
                 </div>
               ) : !isPending ? (
                 <div className="appear-auth">
                   <Button asChild size="sm" className="shimmer-pill border-beam rounded-full px-5">
-                    <Link href="/login">Sign in</Link>
+                    <Link href="/login" className="topbar-text">Sign in</Link>
                   </Button>
                 </div>
               ) : null}
@@ -82,7 +82,7 @@ export function Nav({ showBrandName = true, variant = "app" }: NavProps = {}) {
 
 export function NavSimple({ backHref, backLabel }: { backHref: string; backLabel: string }) {
   return (
-    <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+    <nav className="topbar-nav sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <Logo />
         <Link href={backHref} className="text-sm text-foreground/60 transition-colors hover:text-foreground">

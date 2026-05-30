@@ -5,45 +5,131 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const STYLE_ID = "__font-configurator";
 
 type TextFont = "cinzel" | "cormorant";
+type DitherStyle = "dot" | "blueNoise" | "halftone";
+type EffectScope = "hero" | "page";
+type HeroTitleLayout = "2-line" | "3-line";
 
 type Config = {
   textFont: TextFont;
   rootSize: number;
+  bodyTextSize: number;
   bodyWeight: number;
+  bodyLineHeight: number;
   bodyTracking: number;
+  bodyFirstBlockSpacing: number;
+  bodyBlockSpacing: number;
+  callResponseGap: number;
+  listItemSpacing: number;
   headingScale: number;
   headingWeight: number;
   headingTracking: number;
+  headingTopSpacing: number;
   brandScale: number;
   brandWeight: number;
   brandTracking: number;
+  topbarSize: number;
+  topbarWeight: number;
+  topbarTracking: number;
+  topbarGap: number;
+  topbarLogoSize: number;
   monoSize: number;
-  textBrightness: number; // foreground opacity 0-100
+  textBrightness: number;
   cardTextBrightness: number;
+  heroTitleLayout: HeroTitleLayout;
+  heroTitleTracking: number;
+  heroTitleScale: number;
+  heroContentY: number;
+  heroToplineSize: number;
+  heroToplineX: number;
+  heroToplineY: number;
+  heroToplineWeight: number;
+  heroToplineTracking: number;
+  heroTitleSize: number;
+  heroTitleX: number;
+  heroTitleY: number;
+  heroTitleWeight: number;
+  heroTitleLineHeight: number;
+  heroTaglineSize: number;
+  heroTaglineX: number;
+  heroTaglineY: number;
+  heroTaglineWeight: number;
+  heroTaglineTracking: number;
+  heroGradient: number;
+  heroDither: number;
+  heroDitherStyle: DitherStyle;
+  heroDitherSize: number;
+  heroDitherPrecision: number;
+  heroEffectScope: EffectScope;
+  heroNoise: number;
+  heroBase: string;
+  heroGold: string;
+  heroWhite: string;
 };
 
 const DEFAULTS: Config = {
-  textFont: "cinzel",
+  textFont: "cormorant",
   rootSize: 28,
-  bodyWeight: 400,
-  bodyTracking: 0,
+  bodyTextSize: 26,
+  bodyWeight: 500,
+  bodyLineHeight: 1.5,
+  bodyTracking: 0.025,
+  bodyFirstBlockSpacing: 56,
+  bodyBlockSpacing: 42,
+  callResponseGap: 10,
+  listItemSpacing: 56,
   headingScale: 100,
-  headingWeight: 700,
+  headingWeight: 400,
   headingTracking: 0,
+  headingTopSpacing: 70,
   brandScale: 100,
-  brandWeight: 700,
+  brandWeight: 400,
   brandTracking: 0.05,
+  topbarSize: 14,
+  topbarWeight: 600,
+  topbarTracking: 0.05,
+  topbarGap: 20,
+  topbarLogoSize: 36,
   monoSize: 14,
   textBrightness: 65,
   cardTextBrightness: 85,
+  heroTitleLayout: "2-line",
+  heroTitleTracking: 0.04,
+  heroTitleScale: 100,
+  heroContentY: 0,
+  heroToplineSize: 20,
+  heroToplineX: 0,
+  heroToplineY: 0,
+  heroToplineWeight: 500,
+  heroToplineTracking: 0.35,
+  heroTitleSize: 158,
+  heroTitleX: 0,
+  heroTitleY: 0,
+  heroTitleWeight: 400,
+  heroTitleLineHeight: 1.05,
+  heroTaglineSize: 30,
+  heroTaglineX: 0,
+  heroTaglineY: 0,
+  heroTaglineWeight: 400,
+  heroTaglineTracking: 0,
+  heroGradient: 70,
+  heroDither: 0,
+  heroDitherStyle: "blueNoise",
+  heroDitherSize: 1.1,
+  heroDitherPrecision: 2.5,
+  heroEffectScope: "hero",
+  heroNoise: 0,
+  heroBase: "#07060a",
+  heroGold: "#c9a55c",
+  heroWhite: "#fff7df",
 };
 
-const STORAGE_KEY = "masterbranch-font-config";
+const STORAGE_KEY = "masterbranch-hero-config-v4";
+const LEGACY_STORAGE_KEY = "masterbranch-font-config";
 
 function loadConfig(): Config {
   if (typeof window === "undefined") return DEFAULTS;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return DEFAULTS;
     return { ...DEFAULTS, ...JSON.parse(raw) };
   } catch {
@@ -66,23 +152,10 @@ function applyConfig(c: Config) {
   }
 
   const rules: string[] = [];
-
-  // Body text font — toggled between Cinzel and Cormorant
   const bodyFontVar = c.textFont === "cormorant" ? "var(--font-cormorant)" : "var(--font-cinzel)";
   rules.push(`:root { --font-body-text: ${bodyFontVar}; }`);
-
-  // Root font size — drives all rem-based Tailwind sizes
   rules.push(`html { font-size: ${c.rootSize}px !important; }`);
 
-  // Body text
-  if (c.bodyWeight !== 400) {
-    rules.push(`body { font-weight: ${c.bodyWeight} !important; }`);
-  }
-  if (c.bodyTracking !== 0) {
-    rules.push(`body { letter-spacing: ${c.bodyTracking}em !important; }`);
-  }
-
-  // Foreground brightness
   rules.push(`
     :root, .dark {
       --foreground: rgba(255, 255, 255, ${c.textBrightness / 100}) !important;
@@ -90,48 +163,160 @@ function applyConfig(c: Config) {
     }
   `);
 
-  // Headings (.font-serif = Cormorant headings)
   const hRules: string[] = [];
-  if (c.headingScale !== 100) {
-    hRules.push(`font-size: calc(1em * ${(c.headingScale / 100).toFixed(2)})`);
-  }
-  if (c.headingWeight !== 700) {
-    hRules.push(`font-weight: ${c.headingWeight}`);
-  }
-  if (c.headingTracking !== 0) {
-    hRules.push(`letter-spacing: ${c.headingTracking}em`);
-  }
-  if (hRules.length > 0) {
-    rules.push(`.font-serif { ${hRules.map(r => r + " !important").join("; ")}; }`);
-  }
+  if (c.headingScale !== 100) hRules.push(`font-size: calc(1em * ${(c.headingScale / 100).toFixed(2)})`);
+  if (c.headingWeight !== 400) hRules.push(`font-weight: ${c.headingWeight}`);
+  if (c.headingTracking !== 0) hRules.push(`letter-spacing: ${c.headingTracking}em`);
+  if (hRules.length > 0) rules.push(`.landing-section-heading, .landing-step-title, .landing-principle-title { ${hRules.map((r) => r + " !important").join("; ")}; }`);
+  rules.push(`.landing-section-heading { margin-top: ${c.headingTopSpacing}px !important; }`);
 
-  // Brand (.font-cinzel = "The Master Branch" wordmark)
   const bRules: string[] = [];
-  if (c.brandScale !== 100) {
-    bRules.push(`font-size: calc(1em * ${(c.brandScale / 100).toFixed(2)})`);
-  }
-  if (c.brandWeight !== 700) {
-    bRules.push(`font-weight: ${c.brandWeight}`);
-  }
-  if (c.brandTracking !== 0.05) {
-    bRules.push(`letter-spacing: ${c.brandTracking}em`);
-  }
-  if (bRules.length > 0) {
-    rules.push(`.font-cinzel { ${bRules.map(r => r + " !important").join("; ")}; }`);
-  }
+  if (c.brandScale !== 100) bRules.push(`font-size: calc(1em * ${(c.brandScale / 100).toFixed(2)})`);
+  if (c.brandWeight !== 400) bRules.push(`font-weight: ${c.brandWeight}`);
+  if (c.brandTracking !== 0.05) bRules.push(`letter-spacing: ${c.brandTracking}em`);
+  if (bRules.length > 0) rules.push(`.landing-hero-title { ${bRules.map((r) => r + " !important").join("; ")}; }`);
 
-  // Mono
-  if (c.monoSize !== 14) {
-    rules.push(`.font-mono, code, pre { font-size: ${c.monoSize}px !important; }`);
-  }
+  if (c.monoSize !== 14) rules.push(`.font-mono, code, pre { font-size: ${c.monoSize}px !important; }`);
+
+  rules.push(`
+    .topbar-text {
+      font-size: ${c.topbarSize}px !important;
+      font-weight: ${c.topbarWeight} !important;
+      letter-spacing: ${c.topbarTracking}em !important;
+    }
+    .topbar-brand-group,
+    .topbar-link-group {
+      gap: ${c.topbarGap}px !important;
+    }
+    .topbar-nav {
+      min-height: max(44px, calc(${c.topbarLogoSize}px + 10px)) !important;
+    }
+    .topbar-logo {
+      width: ${c.topbarLogoSize}px !important;
+      height: ${c.topbarLogoSize}px !important;
+      filter: none !important;
+    }
+    .landing-body-text {
+      font-size: ${c.bodyTextSize}px !important;
+      font-weight: ${c.bodyWeight} !important;
+      line-height: ${c.bodyLineHeight} !important;
+      letter-spacing: ${c.bodyTracking}em !important;
+    }
+    .landing-copy-block {
+      margin-top: ${c.bodyBlockSpacing}px !important;
+    }
+    .landing-copy-block-first {
+      margin-top: ${c.bodyFirstBlockSpacing}px !important;
+    }
+    .landing-qa-pair > * + * {
+      margin-top: ${c.callResponseGap}px !important;
+    }
+    .landing-list > * + * {
+      margin-top: ${c.listItemSpacing}px !important;
+    }
+  `);
+
+  const effectTarget = c.heroEffectScope === "page" ? "body" : "#hero";
+  const contentZIndex = c.heroEffectScope === "page" ? "auto" : "1";
+  const pct = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+  const alpha = (value: number) => Math.max(0, Math.min(0.72, value));
+  const dotAlpha = alpha(c.heroDither / 140);
+  const dotSize = Math.max(0.2, Math.min(2.4, c.heroDitherSize));
+  const precision = Math.max(1.5, Math.min(12, c.heroDitherPrecision));
+  const blueNoisePattern = [
+    "15% 18%", "42% 9%", "76% 22%", "91% 48%", "58% 61%", "24% 72%", "8% 91%", "69% 88%",
+    "34% 38%", "83% 74%", "51% 29%", "4% 55%", "96% 6%", "63% 43%", "18% 49%", "47% 82%",
+  ].map((pos) => `radial-gradient(circle at ${pos}, rgba(255,255,255,${dotAlpha}) 0 ${dotSize}px, transparent ${dotSize + 0.35}px)`).join(",\n        ");
+  const ditherPattern = c.heroDitherStyle === "halftone"
+    ? `radial-gradient(circle, rgba(255,255,255,${dotAlpha}) 0 ${dotSize}px, transparent ${dotSize + 0.8}px)`
+    : c.heroDitherStyle === "blueNoise"
+      ? blueNoisePattern
+      : `radial-gradient(circle, rgba(255,255,255,${dotAlpha}) 0 ${dotSize}px, transparent ${dotSize + 0.35}px)`;
+  const ditherCell = c.heroDitherStyle === "blueNoise" ? precision * 8 : precision;
+  const ditherSize = c.heroDitherStyle === "blueNoise"
+    ? Array.from({ length: 16 }, () => `${ditherCell}px ${ditherCell}px`).join(", ")
+    : `${ditherCell}px ${ditherCell}px`;
+
+  rules.push(`
+    ${effectTarget} {
+      isolation: isolate;
+      background:
+        radial-gradient(ellipse 72% 46% at 50% 110%, color-mix(in srgb, ${c.heroGold} ${pct(c.heroGradient * 0.86)}%, transparent), transparent 64%),
+        radial-gradient(ellipse 54% 36% at 0% 0%, color-mix(in srgb, ${c.heroWhite} ${pct(c.heroGradient * 0.26)}%, transparent), transparent 68%),
+        linear-gradient(
+          180deg,
+          ${c.heroBase} 0%,
+          color-mix(in srgb, #060504 ${pct(c.heroGradient)}%, ${c.heroBase}) 48%,
+          color-mix(in srgb, #0f0b05 ${pct(c.heroGradient)}%, ${c.heroBase}) 78%,
+          color-mix(in srgb, #1c1408 ${pct(c.heroGradient)}%, ${c.heroBase}) 100%
+        ) !important;
+    }
+
+    ${effectTarget}::before,
+    ${effectTarget}::after {
+      content: "";
+      position: ${c.heroEffectScope === "page" ? "fixed" : "absolute"};
+      inset: 0;
+      pointer-events: none;
+    }
+
+    ${effectTarget}::before {
+      z-index: 0;
+      opacity: ${alpha(c.heroNoise / 160)};
+      mix-blend-mode: soft-light;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.92' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.72'/%3E%3C/svg%3E");
+    }
+
+    ${effectTarget}::after {
+      z-index: 0;
+      opacity: 1;
+      background-image: ${ditherPattern};
+      background-size: ${ditherSize};
+      mix-blend-mode: screen;
+    }
+
+    #hero > * {
+      position: relative;
+      z-index: ${contentZIndex};
+    }
+
+    #hero .landing-hero-content { transform: translateY(${c.heroContentY}px) !important; }
+    #hero .landing-hero-topline {
+      font-size: ${c.heroToplineSize}px !important;
+      font-weight: ${c.heroToplineWeight} !important;
+      letter-spacing: ${c.heroToplineTracking}em !important;
+      transform: translate(${c.heroToplineX}px, ${c.heroToplineY}px) !important;
+    }
+    #hero .landing-hero-title {
+      font-size: ${c.heroTitleSize}px !important;
+      font-weight: ${c.heroTitleWeight} !important;
+      line-height: ${c.heroTitleLineHeight} !important;
+      letter-spacing: ${c.heroTitleTracking}em !important;
+      transform: translate(${c.heroTitleX}px, ${c.heroTitleY}px) scale(${(c.heroTitleScale / 100).toFixed(2)}) !important;
+      transform-origin: center;
+    }
+    #hero .landing-hero-title span { font-weight: inherit !important; letter-spacing: inherit !important; }
+    #hero .landing-hero-title-two { display: ${c.heroTitleLayout === "2-line" ? "block" : "none"} !important; }
+    #hero .landing-hero-title-three { display: ${c.heroTitleLayout === "3-line" ? "block" : "none"} !important; }
+    #hero .landing-hero-tagline {
+      font-size: ${c.heroTaglineSize}px !important;
+      font-weight: ${c.heroTaglineWeight} !important;
+      letter-spacing: ${c.heroTaglineTracking}em !important;
+      transform: translate(${c.heroTaglineX}px, ${c.heroTaglineY}px) !important;
+    }
+  `);
 
   el.textContent = rules.join("\n");
+  requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
 }
 
 function clearConfig() {
   const el = document.getElementById(STYLE_ID);
   if (el) el.textContent = "";
-  try { localStorage.removeItem(STORAGE_KEY); } catch {}
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
+  } catch {}
 }
 
 export function FontConfigurator() {
@@ -139,22 +324,18 @@ export function FontConfigurator() {
   const [config, setConfig] = useState<Config>(() => loadConfig());
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Apply whenever config changes (after init)
   useEffect(() => {
     applyConfig(config);
     saveConfig(config);
   }, [config]);
 
-  // Keyboard shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "F") {
         e.preventDefault();
         setOpen((o) => !o);
       }
-      if (e.key === "Escape" && open) {
-        setOpen(false);
-      }
+      if (e.key === "Escape" && open) setOpen(false);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -171,141 +352,113 @@ export function FontConfigurator() {
   }, []);
 
   if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        style={{
-          position: "fixed",
-          bottom: 16,
-          right: 16,
-          zIndex: 9999,
-          width: 40,
-          height: 40,
-          borderRadius: "50%",
-          background: "rgba(201, 165, 92, 0.15)",
-          border: "1px solid rgba(201, 165, 92, 0.3)",
-          color: "#c9a55c",
-          fontSize: 14,
-          fontWeight: 700,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          transition: "all 0.2s",
-          backdropFilter: "blur(10px)",
-        }}
-        title="Font Configurator (Cmd+Shift+F)"
-      >
-        Aa
-      </button>
-    );
+    return <button onClick={() => setOpen(true)} style={fabStyle} title="Font Configurator (Cmd+Shift+F)">Aa</button>;
   }
 
   return (
-    <div
-      ref={panelRef}
-      style={{
-        position: "fixed",
-        bottom: 16,
-        right: 16,
-        zIndex: 9999,
-        width: 380,
-        maxHeight: "calc(100vh - 32px)",
-        overflowY: "auto",
-        background: "rgba(13, 12, 16, 0.96)",
-        border: "1px solid rgba(255, 255, 255, 0.1)",
-        borderRadius: 12,
-        padding: 0,
-        boxShadow: "0 16px 48px rgba(0,0,0,0.5), 0 0 80px -20px rgba(201,165,92,0.08)",
-        backdropFilter: "blur(20px)",
-        fontFamily: "system-ui, sans-serif",
-        fontSize: 13,
-        color: "#fff",
-      }}
-    >
-      {/* Header */}
+    <div ref={panelRef} style={panelStyle}>
       <div style={headerStyle}>
-        <span style={titleStyle}>Font Configurator</span>
+        <span style={titleStyle}>Hero Configurator</span>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button onClick={handleReset} style={resetBtnStyle}>Reset</button>
           <button onClick={() => setOpen(false)} style={closeBtnStyle}>&times;</button>
         </div>
       </div>
 
-      {/* Text Font Mode */}
-      <Section title="Text Font" subtitle="Body text typeface">
+      <Section title="Hero Effects" subtitle="Gradient, noise, dither">
+        <Segmented label="Scope" value={config.heroEffectScope} options={["hero", "page"]} onChange={(v) => update("heroEffectScope", v as EffectScope)} />
+        <Slider label="Gradient" value={config.heroGradient} onChange={(v) => update("heroGradient", v)} min={0} max={100} step={5} unit="%" />
+        <Slider label="Dither" value={config.heroDither} onChange={(v) => update("heroDither", v)} min={0} max={100} step={5} unit="%" />
+        <Segmented label="Dither" value={config.heroDitherStyle} options={["blueNoise", "dot", "halftone"]} onChange={(v) => update("heroDitherStyle", v as DitherStyle)} />
+        <Slider label="Dot size" value={config.heroDitherSize} onChange={(v) => update("heroDitherSize", v)} min={0.3} max={2.4} step={0.1} unit="px" />
+        <Slider label="Precision" value={config.heroDitherPrecision} onChange={(v) => update("heroDitherPrecision", v)} min={1.5} max={12} step={0.5} unit="px" />
+        <Slider label="Noise" value={config.heroNoise} onChange={(v) => update("heroNoise", v)} min={0} max={100} step={5} unit="%" />
+        <ColorInput label="Black" value={config.heroBase} onChange={(v) => update("heroBase", v)} />
+        <ColorInput label="Gold" value={config.heroGold} onChange={(v) => update("heroGold", v)} />
+        <ColorInput label="White" value={config.heroWhite} onChange={(v) => update("heroWhite", v)} />
+      </Section>
+
+      <Section title="Hero Layout" subtitle="Direct layer controls">
+        <Segmented label="Layout" value={config.heroTitleLayout} options={["2-line", "3-line"]} onChange={(v) => update("heroTitleLayout", v as HeroTitleLayout)} />
+        <Slider label="Group Y" value={config.heroContentY} onChange={(v) => update("heroContentY", v)} min={-180} max={180} step={4} unit="px" />
+        <Slider label="Top size" value={config.heroToplineSize} onChange={(v) => update("heroToplineSize", v)} min={10} max={64} step={1} unit="px" />
+        <Slider label="Top X" value={config.heroToplineX} onChange={(v) => update("heroToplineX", v)} min={-160} max={160} step={2} unit="px" />
+        <Slider label="Top Y" value={config.heroToplineY} onChange={(v) => update("heroToplineY", v)} min={-120} max={120} step={2} unit="px" />
+        <Slider label="Top wt" value={config.heroToplineWeight} onChange={(v) => update("heroToplineWeight", v)} min={300} max={900} step={100} unit="" />
+        <Slider label="Top trk" value={config.heroToplineTracking} onChange={(v) => update("heroToplineTracking", v)} min={-0.05} max={0.6} step={0.01} unit="em" />
+        <Slider label="Title px" value={config.heroTitleSize} onChange={(v) => update("heroTitleSize", v)} min={56} max={260} step={2} unit="px" />
+        <Slider label="Title X" value={config.heroTitleX} onChange={(v) => update("heroTitleX", v)} min={-160} max={160} step={2} unit="px" />
+        <Slider label="Title Y" value={config.heroTitleY} onChange={(v) => update("heroTitleY", v)} min={-160} max={160} step={2} unit="px" />
+        <Slider label="Title wt" value={config.heroTitleWeight} onChange={(v) => update("heroTitleWeight", v)} min={300} max={900} step={100} unit="" />
+        <Slider label="Leading" value={config.heroTitleLineHeight} onChange={(v) => update("heroTitleLineHeight", v)} min={0.72} max={1.3} step={0.01} unit="" />
+        <Slider label="Scale" value={config.heroTitleScale} onChange={(v) => update("heroTitleScale", v)} min={70} max={140} step={5} unit="%" />
+        <Slider label="Tracking" value={config.heroTitleTracking} onChange={(v) => update("heroTitleTracking", v)} min={-0.08} max={0.16} step={0.005} unit="em" />
+        <Slider label="Tag size" value={config.heroTaglineSize} onChange={(v) => update("heroTaglineSize", v)} min={12} max={92} step={1} unit="px" />
+        <Slider label="Tag X" value={config.heroTaglineX} onChange={(v) => update("heroTaglineX", v)} min={-160} max={160} step={2} unit="px" />
+        <Slider label="Tag Y" value={config.heroTaglineY} onChange={(v) => update("heroTaglineY", v)} min={-140} max={140} step={2} unit="px" />
+        <Slider label="Tag wt" value={config.heroTaglineWeight} onChange={(v) => update("heroTaglineWeight", v)} min={300} max={900} step={100} unit="" />
+        <Slider label="Tag trk" value={config.heroTaglineTracking} onChange={(v) => update("heroTaglineTracking", v)} min={-0.05} max={0.2} step={0.005} unit="em" />
+      </Section>
+
+      <Section title="Top Bar" subtitle="Logo, nav text, spacing">
+        <Slider label="Logo" value={config.topbarLogoSize} onChange={(v) => update("topbarLogoSize", v)} min={24} max={56} step={1} unit="px" />
+        <Slider label="Size" value={config.topbarSize} onChange={(v) => update("topbarSize", v)} min={10} max={28} step={1} unit="px" />
+        <Slider label="Weight" value={config.topbarWeight} onChange={(v) => update("topbarWeight", v)} min={300} max={900} step={100} unit="" />
+        <Slider label="Tracking" value={config.topbarTracking} onChange={(v) => update("topbarTracking", v)} min={-0.04} max={0.2} step={0.005} unit="em" />
+        <Slider label="Gap" value={config.topbarGap} onChange={(v) => update("topbarGap", v)} min={4} max={48} step={1} unit="px" />
+      </Section>
+
+      <Section title="Body Font" subtitle="Regular page text typeface">
         <div style={{ display: "flex", gap: 6, padding: "5px 10px" }}>
           {(["cinzel", "cormorant"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => update("textFont", f)}
-              style={{
-                flex: 1,
-                padding: "5px 0",
-                fontSize: 10,
-                fontWeight: 600,
-                letterSpacing: "0.08em",
-                textTransform: "uppercase" as const,
-                borderRadius: 4,
-                cursor: "pointer",
-                border: config.textFont === f ? "1px solid rgba(201,165,92,0.5)" : "1px solid rgba(255,255,255,0.08)",
-                background: config.textFont === f ? "rgba(201,165,92,0.12)" : "rgba(255,255,255,0.03)",
-                color: config.textFont === f ? "#c9a55c" : "#9d97aa",
-              }}
-            >
-              {f}
-            </button>
+            <button key={f} onClick={() => update("textFont", f)} style={{ ...toggleStyle, border: config.textFont === f ? "1px solid rgba(201,165,92,0.5)" : "1px solid rgba(255,255,255,0.08)", background: config.textFont === f ? "rgba(201,165,92,0.12)" : "rgba(255,255,255,0.03)", color: config.textFont === f ? "#c9a55c" : "#9d97aa" }}>{f}</button>
           ))}
         </div>
       </Section>
 
-      {/* Brand — Cinzel ("The Master Branch") */}
-      <Section title="Brand — Cinzel" subtitle="The Master Branch wordmark">
-        <Slider label="Scale" value={config.brandScale} onChange={(v) => update("brandScale", v)} min={70} max={160} step={5} unit="%" />
-        <Slider label="Weight" value={config.brandWeight} onChange={(v) => update("brandWeight", v)} min={400} max={900} step={100} unit="" />
-        <Slider label="Tracking" value={config.brandTracking} onChange={(v) => update("brandTracking", v)} min={-0.02} max={0.2} step={0.01} unit="em" />
-      </Section>
-
-      {/* Headings — Cormorant */}
-      <Section title="Headings — Cormorant" subtitle="H1-H3, card titles, section headers">
+      <Section title="Headings" subtitle="Section and list titles">
         <Slider label="Scale" value={config.headingScale} onChange={(v) => update("headingScale", v)} min={70} max={180} step={5} unit="%" />
-        <Slider label="Weight" value={config.headingWeight} onChange={(v) => update("headingWeight", v)} min={300} max={700} step={100} unit="" />
-        <Slider label="Tracking" value={config.headingTracking} onChange={(v) => update("headingTracking", v)} min={-0.03} max={0.15} step={0.01} unit="em" />
+        <Slider label="Weight" value={config.headingWeight} onChange={(v) => update("headingWeight", v)} min={300} max={900} step={100} unit="" />
+        <Slider label="Tracking" value={config.headingTracking} onChange={(v) => update("headingTracking", v)} min={-0.05} max={0.18} step={0.005} unit="em" />
+        <Slider label="Top gap" value={config.headingTopSpacing} onChange={(v) => update("headingTopSpacing", v)} min={0} max={120} step={2} unit="px" />
       </Section>
 
-      {/* Body — Cormorant */}
-      <Section title="Body — Cormorant" subtitle="Paragraphs, labels, nav links">
-        <Slider label="Root size" value={config.rootSize} onChange={(v) => update("rootSize", v)} min={16} max={40} step={1} unit="px" />
+      <Section title="Body Text" subtitle="Regular page copy only">
+        <Slider label="Size" value={config.bodyTextSize} onChange={(v) => update("bodyTextSize", v)} min={12} max={42} step={1} unit="px" />
         <Slider label="Weight" value={config.bodyWeight} onChange={(v) => update("bodyWeight", v)} min={300} max={700} step={100} unit="" />
-        <Slider label="Tracking" value={config.bodyTracking} onChange={(v) => update("bodyTracking", v)} min={-0.02} max={0.1} step={0.005} unit="em" />
+        <Slider label="Leading" value={config.bodyLineHeight} onChange={(v) => update("bodyLineHeight", v)} min={1} max={2.2} step={0.05} unit="" />
+        <Slider label="Tracking" value={config.bodyTracking} onChange={(v) => update("bodyTracking", v)} min={-0.05} max={0.14} step={0.005} unit="em" />
+        <Slider label="First gap" value={config.bodyFirstBlockSpacing} onChange={(v) => update("bodyFirstBlockSpacing", v)} min={0} max={120} step={2} unit="px" />
+        <Slider label="Text gap" value={config.bodyBlockSpacing} onChange={(v) => update("bodyBlockSpacing", v)} min={0} max={100} step={2} unit="px" />
+        <Slider label="QA gap" value={config.callResponseGap} onChange={(v) => update("callResponseGap", v)} min={0} max={80} step={2} unit="px" />
+        <Slider label="List gap" value={config.listItemSpacing} onChange={(v) => update("listItemSpacing", v)} min={0} max={120} step={2} unit="px" />
       </Section>
 
-      {/* Mono — JetBrains */}
-      <Section title="Mono — JetBrains" subtitle="Code, data, technical">
-        <Slider label="Size" value={config.monoSize} onChange={(v) => update("monoSize", v)} min={10} max={22} step={1} unit="px" />
-      </Section>
-
-      {/* Colors */}
       <Section title="Text Brightness" subtitle="Foreground opacity">
         <Slider label="Body" value={config.textBrightness} onChange={(v) => update("textBrightness", v)} min={30} max={100} step={5} unit="%" />
         <Slider label="Cards" value={config.cardTextBrightness} onChange={(v) => update("cardTextBrightness", v)} min={40} max={100} step={5} unit="%" />
       </Section>
 
-      {/* Footer */}
-      <div style={footerStyle}>
-        Cmd+Shift+F to toggle &middot; Settings persist across reloads
-      </div>
+      <div style={footerStyle}>Cmd+Shift+F to toggle &middot; Settings persist across reloads</div>
     </div>
   );
 }
-
-/* --- Sub-components --- */
 
 function Section({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
     <div style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
       <div style={{ padding: "10px 16px 2px" }}>
-        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, color: "#c9a55c" }}>{title}</div>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "#c9a55c",
+          }}
+        >
+          {title}
+        </div>
         <div style={{ fontSize: 10, color: "#555", marginTop: 1 }}>{subtitle}</div>
       </div>
       <div style={{ padding: "4px 8px 8px" }}>{children}</div>
@@ -313,41 +466,218 @@ function Section({ title, subtitle, children }: { title: string; subtitle: strin
   );
 }
 
-function Slider({ label, value, onChange, min, max, step, unit }: {
-  label: string; value: number; onChange: (v: number) => void;
-  min: number; max: number; step: number; unit: string;
-}) {
+function Slider({ label, value, onChange, min, max, step, unit }: { label: string; value: number; onChange: (v: number) => void; min: number; max: number; step: number; unit: string }) {
   const display = step < 1 ? value.toFixed(step < 0.01 ? 3 : 2) : value;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 10px" }}>
-      <span style={{ fontSize: 10, color: "#9d97aa", minWidth: 55, textTransform: "uppercase" as const, letterSpacing: "0.04em" }}>{label}</span>
+    <div style={rowStyle}>
+      <span style={labelStyle}>{label}</span>
       <input
-        type="range" min={min} max={max} step={step} value={value}
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
-        style={{ flex: 1, height: 4, accentColor: "#c9a55c", cursor: "pointer" }}
+        style={rangeStyle}
       />
-      <span style={{ fontSize: 11, color: "#e0c882", minWidth: 44, textAlign: "right" as const, fontVariantNumeric: "tabular-nums" }}>{display}{unit}</span>
+      <span style={valueStyle}>
+        {display}
+        {unit}
+      </span>
     </div>
   );
 }
 
-/* --- Styles --- */
+function Segmented({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
+  return (
+    <div style={rowStyle}>
+      <span style={labelStyle}>{label}</span>
+      <div style={{ display: "flex", flex: 1, gap: 5 }}>
+        {options.map((option) => {
+          const active = value === option;
+          return (
+            <button
+              key={option}
+              onClick={() => onChange(option)}
+              style={{
+                ...segmentStyle,
+                border: active ? "1px solid rgba(201,165,92,0.5)" : "1px solid rgba(255,255,255,0.08)",
+                background: active ? "rgba(201,165,92,0.12)" : "rgba(255,255,255,0.03)",
+                color: active ? "#c9a55c" : "#9d97aa",
+              }}
+            >
+              {option}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ColorInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div style={rowStyle}>
+      <span style={labelStyle}>{label}</span>
+      <input type="color" value={value} onChange={(e) => onChange(e.target.value)} style={colorStyle} />
+      <input value={value} onChange={(e) => onChange(e.target.value)} style={textInputStyle} />
+    </div>
+  );
+}
+
+const panelStyle: React.CSSProperties = {
+  position: "fixed",
+  bottom: 16,
+  right: 16,
+  zIndex: 9999,
+  width: 380,
+  maxHeight: "calc(100vh - 32px)",
+  overflowY: "auto",
+  background: "rgba(13, 12, 16, 0.96)",
+  border: "1px solid rgba(255, 255, 255, 0.1)",
+  borderRadius: 12,
+  padding: 0,
+  boxShadow: "0 16px 48px rgba(0,0,0,0.5), 0 0 80px -20px rgba(201,165,92,0.08)",
+  backdropFilter: "blur(20px)",
+  fontFamily: "system-ui, sans-serif",
+  fontSize: 13,
+  color: "#fff",
+};
+
+const fabStyle: React.CSSProperties = {
+  position: "fixed",
+  bottom: 16,
+  right: 16,
+  zIndex: 9999,
+  width: 40,
+  height: 40,
+  borderRadius: "50%",
+  background: "rgba(201, 165, 92, 0.15)",
+  border: "1px solid rgba(201, 165, 92, 0.3)",
+  color: "#c9a55c",
+  fontSize: 14,
+  fontWeight: 700,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  backdropFilter: "blur(10px)",
+};
+
 const headerStyle: React.CSSProperties = {
-  display: "flex", justifyContent: "space-between", alignItems: "center",
-  padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "14px 16px",
+  borderBottom: "1px solid rgba(255,255,255,0.06)",
 };
+
 const titleStyle: React.CSSProperties = {
-  fontSize: 11, fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", color: "#c9a55c",
+  fontSize: 11,
+  fontWeight: 600,
+  letterSpacing: "0.1em",
+  textTransform: "uppercase",
+  color: "#c9a55c",
 };
+
 const resetBtnStyle: React.CSSProperties = {
-  fontSize: 10, color: "#9d97aa", background: "rgba(255,255,255,0.05)",
-  border: "1px solid rgba(255,255,255,0.08)", borderRadius: 4, padding: "4px 8px",
-  cursor: "pointer", letterSpacing: "0.05em", textTransform: "uppercase",
+  fontSize: 10,
+  color: "#9d97aa",
+  background: "rgba(255,255,255,0.05)",
+  border: "1px solid rgba(255,255,255,0.08)",
+  borderRadius: 4,
+  padding: "4px 8px",
+  cursor: "pointer",
+  letterSpacing: "0.05em",
+  textTransform: "uppercase",
 };
+
 const closeBtnStyle: React.CSSProperties = {
-  fontSize: 16, color: "#9d97aa", background: "none", border: "none", cursor: "pointer", padding: "0 2px",
+  fontSize: 16,
+  color: "#9d97aa",
+  background: "none",
+  border: "none",
+  cursor: "pointer",
+  padding: "0 2px",
 };
+
 const footerStyle: React.CSSProperties = {
-  padding: "10px 16px", borderTop: "1px solid rgba(255,255,255,0.06)",
-  fontSize: 10, color: "#555", textAlign: "center", letterSpacing: "0.04em",
+  padding: "10px 16px",
+  borderTop: "1px solid rgba(255,255,255,0.06)",
+  fontSize: 10,
+  color: "#555",
+  textAlign: "center",
+  letterSpacing: "0.04em",
+};
+
+const rowStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "5px 10px",
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 10,
+  color: "#9d97aa",
+  minWidth: 55,
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+};
+
+const rangeStyle: React.CSSProperties = {
+  flex: 1,
+  height: 4,
+  accentColor: "#c9a55c",
+  cursor: "pointer",
+};
+
+const valueStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: "#e0c882",
+  minWidth: 44,
+  textAlign: "right",
+  fontVariantNumeric: "tabular-nums",
+};
+
+const colorStyle: React.CSSProperties = {
+  width: 38,
+  height: 24,
+  padding: 0,
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: 4,
+  background: "transparent",
+  cursor: "pointer",
+};
+
+const textInputStyle: React.CSSProperties = {
+  flex: 1,
+  height: 24,
+  border: "1px solid rgba(255,255,255,0.08)",
+  borderRadius: 4,
+  background: "rgba(255,255,255,0.04)",
+  color: "#e0c882",
+  padding: "0 7px",
+  fontSize: 11,
+  fontFamily: "monospace",
+};
+
+const segmentStyle: React.CSSProperties = {
+  flex: 1,
+  padding: "5px 4px",
+  fontSize: 10,
+  fontWeight: 600,
+  borderRadius: 4,
+  cursor: "pointer",
+};
+
+const toggleStyle: React.CSSProperties = {
+  flex: 1,
+  padding: "5px 0",
+  fontSize: 10,
+  fontWeight: 600,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  borderRadius: 4,
+  cursor: "pointer",
 };

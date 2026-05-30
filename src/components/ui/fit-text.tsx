@@ -5,7 +5,7 @@ import type { CSSProperties, HTMLAttributes } from "react";
 
 type FitTextProps = HTMLAttributes<HTMLElement> & {
   as?: "span" | "p" | "div" | "h1" | "h2" | "h3";
-  text: string;
+  text?: string;
   minFontSize: number;
   maxFontSize?: number;
   targetLines?: number;
@@ -30,6 +30,12 @@ function textLineCount(el: HTMLElement) {
   return tops.length;
 }
 
+function textRects(el: HTMLElement) {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  return Array.from(range.getClientRects()).filter((rect) => rect.width > 0.5 && rect.height > 0.5);
+}
+
 export const FitText = forwardRef<HTMLElement, FitTextProps>(function FitText(
   {
     as = "span",
@@ -40,6 +46,7 @@ export const FitText = forwardRef<HTMLElement, FitTextProps>(function FitText(
     noWrap = false,
     preserveNewlines = false,
     style,
+    children,
     ...rest
   },
   forwardedRef
@@ -49,17 +56,33 @@ export const FitText = forwardRef<HTMLElement, FitTextProps>(function FitText(
 
   useLayoutEffect(() => {
     const el = innerRef.current;
+    if (!el || fontSizePx === null) return;
+    el.style.setProperty("font-size", `${fontSizePx}px`, "important");
+  }, [fontSizePx]);
+
+  useLayoutEffect(() => {
+    const el = innerRef.current;
     if (!el) return;
 
     let frameId = 0;
 
     const fitsAtSize = (candidatePx: number) => {
-      el.style.fontSize = `${candidatePx}px`;
+      el.style.setProperty("font-size", `${candidatePx}px`, "important");
       void el.getBoundingClientRect();
 
       const rect = el.getBoundingClientRect();
       const clippedViewportX = rect.left < -0.5 || rect.right > window.innerWidth + 0.5;
       if (clippedViewportX) return false;
+
+      const parentRect = el.parentElement?.getBoundingClientRect();
+      for (const lineRect of textRects(el)) {
+        if (lineRect.left < -0.5 || lineRect.right > window.innerWidth + 0.5) {
+          return false;
+        }
+        if (parentRect && (lineRect.left < parentRect.left - 0.5 || lineRect.right > parentRect.right + 0.5)) {
+          return false;
+        }
+      }
 
       if (noWrap) {
         return el.scrollWidth <= el.clientWidth + 1;
@@ -73,8 +96,9 @@ export const FitText = forwardRef<HTMLElement, FitTextProps>(function FitText(
     };
 
     const fit = () => {
-      const previousInlineFontSize = el.style.fontSize;
-      el.style.fontSize = "";
+      const previousInlineFontSize = el.style.getPropertyValue("font-size");
+      const previousInlinePriority = el.style.getPropertyPriority("font-size");
+      el.style.removeProperty("font-size");
 
       const computedFontSize = maxFontSize ?? parseFloat(window.getComputedStyle(el).fontSize);
       const lowerBound = Math.min(minFontSize, computedFontSize);
@@ -97,7 +121,11 @@ export const FitText = forwardRef<HTMLElement, FitTextProps>(function FitText(
         best = lowerBound;
       }
 
-      el.style.fontSize = previousInlineFontSize;
+      if (previousInlineFontSize) {
+        el.style.setProperty("font-size", previousInlineFontSize, previousInlinePriority);
+      } else {
+        el.style.removeProperty("font-size");
+      }
 
       const rounded = Math.round(best * 100) / 100;
       setFontSizePx((current) => (current !== null && Math.abs(current - rounded) < 0.25 ? current : rounded));
@@ -124,7 +152,7 @@ export const FitText = forwardRef<HTMLElement, FitTextProps>(function FitText(
       observer.disconnect();
       window.removeEventListener("resize", scheduleFit);
     };
-  }, [maxFontSize, minFontSize, noWrap, targetLines, text]);
+  }, [children, maxFontSize, minFontSize, noWrap, targetLines, text]);
 
   const setRefs = (node: HTMLElement | null) => {
     innerRef.current = node;
@@ -149,7 +177,7 @@ export const FitText = forwardRef<HTMLElement, FitTextProps>(function FitText(
 
   return (
     <Tag ref={setRefs} style={mergedStyle} {...rest}>
-      {text}
+      {children ?? text}
     </Tag>
   );
 });

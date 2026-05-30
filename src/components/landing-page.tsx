@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import { COMMUNITY_URL } from "@/lib/config";
 import { Nav } from "@/components/nav";
+import { FitText } from "@/components/ui/fit-text";
 import { landingCopy } from "@/content/landing-copy";
 import type { ContentBlock } from "@/content/landing-copy";
 
@@ -22,7 +23,7 @@ const sp = {
 };
 
 const ty = {
-  sectionHeading: "fluid-h2 font-semibold leading-tight tracking-wide",
+  sectionHeading: "fluid-h2 font-normal leading-tight tracking-wide",
   body: "fluid-body font-medium tracking-wide leading-normal",
   subtitle: "fluid-subtitle leading-[1.8]",
   small: "fluid-xs",
@@ -144,22 +145,23 @@ function Block({ block, index }: {
   block: ContentBlock; index: number;
 }) {
   const spacing = index === 0 ? sp.paragraphFirst : sp.paragraph;
+  const blockSpacing = `landing-copy-block ${index === 0 ? "landing-copy-block-first" : ""}`;
 
   switch (block.type) {
     case "statement":
       return (
-        <p className={`${spacing} ${statementTone[block.tone ?? "default"]} ${tf} whitespace-pre-wrap`}>
+        <p className={`${spacing} ${blockSpacing} landing-body-text ${statementTone[block.tone ?? "default"]} ${tf} whitespace-pre-wrap`}>
           {parseMarkup(block.text)}
         </p>
       );
 
     case "call-response":
       return (
-        <div className={`${spacing} flex flex-col items-center gap-6 text-center`}>
+        <div className={`${spacing} ${blockSpacing} landing-call-response flex flex-col items-center gap-6 text-center`}>
           <div className="space-y-4 md:space-y-5">
-            <div className="space-y-1.5">
-              <p className={`${tf} ${ty.body} text-white/45`}>{parseMarkup(block.prompt)}</p>
-              <p className={`${tf} ${ty.body} text-white`}>{parseMarkup(block.answer)}</p>
+            <div className="landing-qa-pair space-y-1.5">
+              <p className={`landing-body-text ${tf} ${ty.body} text-white/45`}>{parseMarkup(block.prompt)}</p>
+              <p className={`landing-body-text ${tf} ${ty.body} text-white`}>{parseMarkup(block.answer)}</p>
             </div>
           </div>
         </div>
@@ -167,7 +169,7 @@ function Block({ block, index }: {
 
     case "accent":
       return (
-        <p className={`${sp.accent} ${tf} fluid-accent tracking-wide text-gold whitespace-pre-wrap`}>
+        <p className={`${sp.accent} ${blockSpacing} landing-accent-text ${tf} fluid-accent tracking-wide text-gold whitespace-pre-wrap`}>
           {parseMarkup(block.text)}
         </p>
       );
@@ -188,34 +190,57 @@ export function LandingPage() {
           <div className="absolute bottom-0 left-1/2 h-[300px] w-[600px] -translate-x-1/2 translate-y-1/3 rounded-full bg-gold/[0.02] blur-[100px]" />
         </div>
 
-        <div className="relative mx-auto max-w-4xl px-6 py-10 text-center md:py-14">
+        <div className="landing-hero-content relative mx-auto w-full max-w-4xl px-6 py-10 text-center md:py-14">
           <FadeIn>
-            <p className="font-cinzel fluid-xs font-medium uppercase tracking-[0.35em] text-gold/60">
+            <Image
+              src="/icon.png"
+              alt="Masterbranch emblem"
+              width={96}
+              height={96}
+              priority
+              className="mx-auto mb-5 h-[44px] w-[44px] object-contain drop-shadow-[0_0_20px_rgba(201,165,92,0.18)] sm:h-[52px] sm:w-[52px] md:h-[60px] md:w-[60px]"
+            />
+          </FadeIn>
+
+          <FadeIn delay={0.05}>
+            <p className="landing-hero-topline font-cinzel fluid-xs font-medium uppercase tracking-[0.35em] text-gold/60">
               {landingCopy.hero.location}
             </p>
           </FadeIn>
 
-          <FadeIn delay={0.05}>
-            <Image
-              src="/icon.png"
-              alt="Masterbranch emblem"
-              width={512}
-              height={512}
-              priority
-              className="mx-auto mt-8 h-36 w-36 object-contain drop-shadow-[0_0_42px_rgba(201,165,92,0.20)] sm:h-44 sm:w-44 md:h-56 md:w-56 lg:h-64 lg:w-64"
-            />
-          </FadeIn>
-
           <FadeIn delay={0.1}>
-            <h1 className="mt-8 font-cinzel fluid-hero font-bold leading-[1.05] tracking-wide">
-              <span className="text-gold-shimmer">The Master</span>
+            <FitText
+              as="h1"
+              className="landing-hero-title landing-hero-title-two mt-8 font-cinzel fluid-hero font-normal leading-[1.05] tracking-wide"
+              text="The Master Branch"
+              minFontSize={44}
+              maxFontSize={210}
+              targetLines={2}
+            >
+              <span className="whitespace-nowrap text-gold-shimmer">The Master</span>
               <br />
-              <span className="text-white">Branch</span>
-            </h1>
+              <span className="whitespace-nowrap text-white">Branch</span>
+            </FitText>
+            {process.env.NODE_ENV === "development" && (
+              <FitText
+                as="h1"
+                className="landing-hero-title landing-hero-title-three mt-8 font-cinzel fluid-hero font-normal leading-[1.05] tracking-wide"
+                text="THE MASTER BRANCH"
+                minFontSize={44}
+                maxFontSize={210}
+                targetLines={3}
+              >
+                <span className="whitespace-nowrap text-gold-shimmer">THE</span>
+                <br />
+                <span className="whitespace-nowrap text-gold-shimmer">MASTER</span>
+                <br />
+                <span className="whitespace-nowrap text-white">BRANCH</span>
+              </FitText>
+            )}
           </FadeIn>
 
           <FadeIn delay={0.25}>
-            <p className={`${tf} mx-auto mt-10 max-w-2xl fluid-subtitle leading-relaxed text-white/50`}>
+            <p className={`landing-hero-tagline ${tf} mx-auto mt-10 max-w-2xl fluid-subtitle leading-relaxed text-white/50`}>
               {landingCopy.hero.tagline}
             </p>
           </FadeIn>
@@ -225,11 +250,11 @@ export function LandingPage() {
       {/* ━━━━━━━━━━━━━━━━ CONTENT SECTIONS ━━━━━━━━━━━━━━━━ */}
       {landingCopy.sections.map((section) => (
         <section key={section.id} id={section.id} className="relative">
-          <div className={`mx-auto max-w-3xl text-center ${sp.section}`}>
+          <div className={`landing-section mx-auto max-w-3xl text-center ${sp.section}`}>
             <FadeIn><Divider /></FadeIn>
 
             <FadeIn delay={0.1}>
-              <h2 className={`${sp.heading} font-cinzel ${ty.sectionHeading} text-white whitespace-pre-wrap`}>
+              <h2 className={`${sp.heading} landing-section-heading font-cinzel ${ty.sectionHeading} text-white whitespace-pre-wrap`}>
                 {section.heading}
               </h2>
             </FadeIn>
@@ -249,22 +274,22 @@ export function LandingPage() {
           <FadeIn><Divider /></FadeIn>
 
           <FadeIn delay={0.1}>
-            <h2 className={`${sp.heading} font-cinzel ${ty.sectionHeading} text-white whitespace-pre-wrap`}>
+            <h2 className={`${sp.heading} landing-section-heading font-cinzel ${ty.sectionHeading} text-white whitespace-pre-wrap`}>
               {landingCopy.nights.heading}
             </h2>
           </FadeIn>
 
           <FadeIn delay={0.2}>
-            <div className={`${sp.listWrap} ${sp.list}`}>
+            <div className={`landing-list ${sp.listWrap} ${sp.list}`}>
               {landingCopy.nights.steps.map((step, i) => (
                 <FadeIn key={step.num} delay={0.1 + i * 0.08}>
                   <div className="flex flex-col items-center gap-2">
-                    <h3 className="font-cinzel fluid-body font-semibold tracking-wide text-white/80">
+                    <h3 className="landing-step-title font-cinzel fluid-body font-normal tracking-wide text-white/80">
                       <span className="mr-3 font-mono fluid-xs font-medium text-gold/30">{step.num}</span>
                       {step.title}
                       <span className="ml-3 font-mono fluid-xs font-normal text-white/20">{step.time}</span>
                     </h3>
-                    <p className={`${tf} mt-2 ${ty.body} text-white/40`}>{step.desc}</p>
+                    <p className={`landing-body-text ${tf} mt-2 ${ty.body} text-white/40`}>{step.desc}</p>
                   </div>
                 </FadeIn>
               ))}
@@ -279,14 +304,14 @@ export function LandingPage() {
           <FadeIn><Divider /></FadeIn>
 
           <FadeIn delay={0.1}>
-            <div className={`${sp.listWrap} ${sp.list} text-center`}>
+            <div className={`landing-list ${sp.listWrap} ${sp.list} text-center`}>
               {landingCopy.principles.map((item, i) => (
                 <FadeIn key={item.title} delay={0.15 + i * 0.1}>
                   <div>
-                    <p className={`font-cinzel ${ty.subtitle} text-white/80`}>
+                    <p className={`landing-principle-title font-cinzel ${ty.subtitle} text-white/80`}>
                       {item.title}<span className="text-gold/40">.</span>
                     </p>
-                    <p className={`${tf} mt-1 ${ty.body} text-white/35`}>
+                    <p className={`landing-body-text ${tf} mt-1 ${ty.body} text-white/35`}>
                       {item.desc}
                     </p>
                   </div>
@@ -297,7 +322,7 @@ export function LandingPage() {
 
           <FadeIn delay={0.4}>
             <div className="mt-10 flex flex-col items-center gap-5 pt-4 text-center">
-              <p className={`${tf} ${ty.subtitle} text-white/70`}>
+              <p className={`landing-body-text ${tf} ${ty.subtitle} text-white/70`}>
                 {landingCopy.cta.prompt}
               </p>
               <a

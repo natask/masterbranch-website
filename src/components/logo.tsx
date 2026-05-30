@@ -9,11 +9,11 @@ export function Logo({ size = "sm" }: { size?: "sm" | "md" }) {
   return (
     <Link href="/" className="flex items-center gap-3">
       <Image
-        src="/icon.png"
+        src="/icon.svg"
         alt={SITE_NAME}
         width={px}
         height={px}
-        className={`${dims} cursor-pointer object-contain drop-shadow-[0_0_18px_rgba(201,165,92,0.18)] transition-transform duration-200 hover:scale-110`}
+        className={`topbar-logo ${dims} cursor-pointer object-contain transition-transform duration-200 hover:scale-105`}
       />
     </Link>
   );

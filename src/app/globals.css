@@ -163,6 +163,10 @@
 .fluid-xs       { font-size: clamp(12px, calc(0.6vw + 11px), 20px); }
 .fluid-accent   { font-size: clamp(20px, calc(1.2vw + 16px), 33px); }
 
+.landing-hero-title-three {
+  display: none;
+}
+
 /* Gold gradient text */
 .text-gold-gradient {
   background: linear-gradient(135deg, #e0c882 0%, #c9a55c 40%, #a07d3a 100%);
@@ -354,7 +358,7 @@
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
+  z-index: 40;
   background: radial-gradient(
     700px circle at var(--fl-x, -900px) var(--fl-y, -900px),
     rgba(255, 245, 220, calc(0.12 * var(--fl-intensity, 1))) 0%,
