@@ -99,7 +99,6 @@ export const landingCopy: LandingCopy = {
 
   principles: [
     { title: "No BS", desc: "Only what was built and how." },
-    { title: "No Sponsors", desc: "Only us paying for our own tools." },
     { title: "No Excuses", desc: "Only unbridled ambition." },
   ],
 
