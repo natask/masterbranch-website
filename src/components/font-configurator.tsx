@@ -317,13 +317,19 @@ function applyConfig(c: Config) {
       .landing-schedule-list {
         width: min(100%, ${c.scheduleColumnWidth}px) !important;
         margin-inline: auto !important;
-      }
-      .landing-schedule-row {
         display: grid !important;
         grid-template-columns: ${c.scheduleNumWidth}px minmax(${c.scheduleTitleWidth}px, max-content) ${c.scheduleTimeWidth}px !important;
         justify-content: center !important;
-        align-items: baseline !important;
         column-gap: 18px !important;
+      }
+      .landing-schedule-item {
+        display: grid !important;
+        grid-column: 1 / -1 !important;
+        grid-template-columns: subgrid !important;
+      }
+      .landing-schedule-row {
+        display: contents !important;
+        align-items: baseline !important;
         text-align: left !important;
       }
       .landing-schedule-num {
