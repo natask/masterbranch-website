@@ -284,7 +284,7 @@ export function LandingPage() {
           <FadeIn delay={0.2}>
             <div className={`landing-schedule-list landing-list ${sp.listWrap} ${sp.list}`}>
               {landingCopy.nights.steps.map((step, i) => (
-                <FadeIn key={step.num} delay={0.1 + i * 0.08}>
+                <FadeIn key={step.num} className="landing-schedule-item" delay={0.1 + i * 0.08}>
                   <div className="landing-schedule-row flex flex-col items-center gap-2">
                     <span className="landing-schedule-num font-mono fluid-xs font-medium text-gold/30">{step.num}</span>
                     <div className="landing-schedule-main">
@@ -333,7 +333,7 @@ export function LandingPage() {
                 href={COMMUNITY_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="shimmer-pill inline-flex items-center gap-2.5 rounded-full px-8 py-2.5 fluid-body font-semibold shadow-layered-gold"
+                className="shimmer-pill inline-flex items-center gap-2.5 rounded-full px-8 py-2.5 fluid-body font-normal shadow-layered-gold"
               >
                 {landingCopy.cta.label}
               </a>
