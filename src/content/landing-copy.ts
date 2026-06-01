@@ -69,15 +69,16 @@ export const landingCopy: LandingCopy = {
       heading: "Engineering\nGym",
       blocks: [
         { type: "statement", text: "For those who solve their own problems." },
+        { type: "statement", text: "For those who learn by doing." },
         { type: "statement", text: "For those who trade *candid* feedback." },
-        { type: "statement", text: "For those sharpened by formidable peers.", tone: "gold" },
+        { type: "statement", text: "For those sharpened by like-minded peers.", tone: "gold" },
       ],
     },
     {
       id: "builder-path",
       heading: "Scratch\nyour Own Itch",
       blocks: [
-        { type: "call-response", prompt: "That product you wish existed but continues to elude you?", answer: "Build it." },
+        { type: "call-response", prompt: "That product you wish existed?", answer: "Build it." },
         { type: "call-response", prompt: "That shitty software that keeps fighting you?", answer: "Conquer it." },
         { type: "call-response", prompt: "That idea that keeps nagging you?", answer: "Try it." },
         { type: "statement", text: "If others need it too, even ***better***." },
@@ -96,14 +97,14 @@ export const landingCopy: LandingCopy = {
   },
 
   principles: [
-    { title: "No BS", desc: "Only proof and implementation." },
-    { title: "No Sponsors", desc: "Only engineers building without permission." },
-    { title: "No Excuses", desc: "Only unbridled ambition." },
+    { title: "No BS", desc: "" },
+    { title: "No Sponsors", desc: "" },
+    { title: "No Excuses", desc: "" },
   ],
 
   cta: {
-    prompt: "Are you ready?",
-    label: "Prove it.",
+    prompt: "",
+    label: "Are you ready?",
     footer: "Master yourself.\nMaster AI.",
   },
 };

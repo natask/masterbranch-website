@@ -20,6 +20,6 @@ describe("config", () => {
     const parsed = new URL(COMMUNITY_URL);
     expect(parsed.protocol).toBe("https:");
     expect(parsed.hostname).toBe("x.com");
-    expect(parsed.pathname.startsWith("/i/communities/")).toBe(true);
+    expect(parsed.pathname).toBe("/MasterBranchAI");
   });
 });

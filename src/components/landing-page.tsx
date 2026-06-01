@@ -24,8 +24,8 @@ const sp = {
 
 const ty = {
   sectionHeading: "fluid-h2 font-normal leading-tight tracking-wide",
-  body: "fluid-body font-medium tracking-wide leading-normal",
-  subtitle: "fluid-subtitle leading-[1.8]",
+  body: "fluid-body leading-relaxed",
+  subtitle: "fluid-subtitle leading-[1.5]",
   small: "fluid-xs",
 };
 
@@ -259,11 +259,13 @@ export function LandingPage() {
               </h2>
             </FadeIn>
 
-            {section.blocks.map((block, i) => (
-              <FadeIn key={`${section.id}-${i}`} delay={0.15 + i * 0.05}>
-                <Block block={block} index={i} />
-              </FadeIn>
-            ))}
+            <div className="landing-section-body">
+              {section.blocks.map((block, i) => (
+                <FadeIn key={`${section.id}-${i}`} delay={0.15 + i * 0.05}>
+                  <Block block={block} index={i} />
+                </FadeIn>
+              ))}
+            </div>
           </div>
         </section>
       ))}
@@ -280,16 +282,18 @@ export function LandingPage() {
           </FadeIn>
 
           <FadeIn delay={0.2}>
-            <div className={`landing-list ${sp.listWrap} ${sp.list}`}>
+            <div className={`landing-schedule-list landing-list ${sp.listWrap} ${sp.list}`}>
               {landingCopy.nights.steps.map((step, i) => (
                 <FadeIn key={step.num} delay={0.1 + i * 0.08}>
-                  <div className="flex flex-col items-center gap-2">
-                    <h3 className="landing-step-title font-cinzel fluid-body font-normal tracking-wide text-white/80">
-                      <span className="mr-3 font-mono fluid-xs font-medium text-gold/30">{step.num}</span>
-                      {step.title}
-                      <span className="ml-3 font-mono fluid-xs font-normal text-white/20">{step.time}</span>
-                    </h3>
-                    <p className={`landing-body-text ${tf} mt-2 ${ty.body} text-white/40`}>{step.desc}</p>
+                  <div className="landing-schedule-row flex flex-col items-center gap-2">
+                    <span className="landing-schedule-num font-mono fluid-xs font-medium text-gold/30">{step.num}</span>
+                    <div className="landing-schedule-main">
+                      <h3 className="landing-step-title font-cinzel fluid-body font-normal tracking-wide text-white/80">
+                        {step.title}
+                      </h3>
+                      <p className={`landing-schedule-desc landing-body-text ${tf} mt-2 ${ty.body} text-white/40`}>{step.desc}</p>
+                    </div>
+                    <span className="landing-schedule-time font-mono fluid-xs font-normal text-white/20">{step.time}</span>
                   </div>
                 </FadeIn>
               ))}

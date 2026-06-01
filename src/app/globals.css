@@ -9,6 +9,8 @@
   --font-cormorant: "Cormorant Garamond";
   --font-cinzel: "Cinzel";
   --font-jetbrains: "JetBrains Mono";
+  --font-source-serif: "Source Serif 4";
+  --font-body-text: var(--font-source-serif);
   --background: #07060a;
   --foreground: rgba(255, 255, 255, 0.65);
   --card: #0d0c10;
@@ -112,7 +114,7 @@
   --color-gold-light: #e0c882;
   --color-gold-dark: #a07d3a;
   --color-gold-muted: rgba(201, 165, 92, 0.15);
-  --font-sans: var(--font-cormorant);
+  --font-sans: var(--font-source-serif);
   --font-mono: var(--font-jetbrains);
   --font-serif: var(--font-cormorant);
   --radius-sm: calc(var(--radius) - 4px);
@@ -131,14 +133,16 @@
     scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
   }
   html {
-    /* Smooth proportional root: 18px at 375px → 28px at 1440px, no breakpoint jumps */
-    font-size: clamp(18px, calc(0.939vw + 14.48px), 28px);
+    /* Keep UI controls readable without letting text-sm inflate into display type. */
+    font-size: clamp(16px, calc(0.188vw + 15.3px), 18px);
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-cormorant), Georgia, serif;
+    font-family: var(--font-source-serif), Georgia, serif;
     position: relative;
     isolation: isolate;
+    font-optical-sizing: auto;
+    text-rendering: geometricPrecision;
   }
 }
 
@@ -194,12 +198,12 @@ html.viewport-frame .font-configurator-panel {
 
 /* ---- Deployment icon defaults; final values can be pulled from the configurator ---- */
 .topbar-nav {
-  min-height: max(44px, calc(44px + 10px));
+  min-height: max(44px, calc(50px + 10px));
 }
 
 .topbar-logo {
-  width: 44px;
-  height: 44px;
+  width: 50px;
+  height: 50px;
   filter: none;
 }
 
@@ -225,20 +229,54 @@ html.viewport-frame .font-configurator-panel {
 }
 
 .font-body-text {
-  font-family: var(--font-body-text, var(--font-cormorant));
+  font-family: var(--font-body-text, var(--font-source-serif));
 }
 
 /* ---- Fluid typography — linear interpolation 375px → 1440px, capped at laptop ---- */
 /* formula: clamp(min, calc(slope·vw + intercept), max)                               */
-.fluid-hero     { font-size: clamp(40px, calc(11vw - 1px), 158px); }
-.fluid-h2       { font-size: clamp(34px, calc(2.4vw + 25px), 59px); }
-.fluid-subtitle { font-size: clamp(20px, calc(0.9vw + 17px), 30px); }
-.fluid-body     { font-size: clamp(14px, calc(1vw + 12px), 26px); }
-.fluid-xs       { font-size: clamp(12px, calc(0.6vw + 11px), 20px); }
-.fluid-accent   { font-size: clamp(20px, calc(1.2vw + 16px), 33px); }
+.fluid-hero     { font-size: clamp(40px, calc(9.9vw + 2px), 148px); }
+.fluid-h2       { font-size: clamp(30px, calc(1.75vw + 23px), 48px); }
+.fluid-subtitle { font-size: clamp(18px, calc(0.55vw + 16px), 24px); }
+.fluid-body     { font-size: clamp(16px, calc(0.45vw + 14px), 21px); }
+.fluid-xs       { font-size: clamp(11px, calc(0.24vw + 10px), 14px); }
+.fluid-accent   { font-size: clamp(19px, calc(0.75vw + 16px), 27px); }
+
+.landing-body-text {
+  font-family: var(--font-body-text), Georgia, serif;
+  font-weight: 450;
+  letter-spacing: 0.005em;
+}
+
+.landing-section-heading,
+.landing-hero-title,
+.topbar-text {
+  text-wrap: balance;
+}
+
+.landing-hero-tagline {
+  font-weight: 350;
+  letter-spacing: 0.01em;
+}
 
 .landing-hero-title-three {
   display: none;
+}
+
+.landing-schedule-row {
+  display: grid;
+  grid-template-columns: max-content max-content max-content;
+  justify-content: center;
+  align-items: baseline;
+  column-gap: 0.75rem;
+}
+
+.landing-schedule-main {
+  display: contents;
+}
+
+.landing-schedule-desc {
+  grid-column: 1 / -1;
+  justify-self: center;
 }
 
 /* Gold gradient text */

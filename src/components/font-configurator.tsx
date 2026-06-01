@@ -8,6 +8,8 @@ type TextFont = "cinzel" | "cormorant";
 type DitherStyle = "dot" | "blueNoise" | "halftone";
 type EffectScope = "hero" | "page";
 type HeroTitleLayout = "2-line" | "3-line";
+type ContentAlignment = "center" | "columnLeft";
+type ScheduleLayout = "center" | "alignedGrid";
 
 type Config = {
   textFont: TextFont;
@@ -19,6 +21,13 @@ type Config = {
   bodyFirstBlockSpacing: number;
   bodyBlockSpacing: number;
   callResponseGap: number;
+  contentAlignment: ContentAlignment;
+  contentColumnWidth: number;
+  scheduleLayout: ScheduleLayout;
+  scheduleColumnWidth: number;
+  scheduleNumWidth: number;
+  scheduleTitleWidth: number;
+  scheduleTimeWidth: number;
   listItemSpacing: number;
   headingScale: number;
   headingWeight: number;
@@ -77,7 +86,7 @@ const EFFECT_DEFAULTS: Pick<Config, "heroGradient" | "heroDither" | "heroEffectS
 };
 
 const ICON_DEFAULTS: Pick<Config, "topbarLogoSize" | "socialIconSize" | "heroIconSize" | "heroIconY" | "heroIconGap"> = {
-  topbarLogoSize: 44,
+  topbarLogoSize: 50,
   socialIconSize: 24,
   heroIconSize: 72,
   heroIconY: 0,
@@ -94,6 +103,13 @@ const DEFAULTS: Config = {
   bodyFirstBlockSpacing: 56,
   bodyBlockSpacing: 42,
   callResponseGap: 10,
+  contentAlignment: "center",
+  contentColumnWidth: 560,
+  scheduleLayout: "center",
+  scheduleColumnWidth: 520,
+  scheduleNumWidth: 42,
+  scheduleTitleWidth: 150,
+  scheduleTimeWidth: 68,
   listItemSpacing: 56,
   headingScale: 100,
   headingWeight: 400,
@@ -151,6 +167,8 @@ const LEGACY_STORAGE_KEYS = ["masterbranch-hero-config-v5", "masterbranch-hero-c
 function parseStoredConfig(raw: string, forceEffectDefaults = false, forceIconDefaults = false): Config {
   const stored = JSON.parse(raw) as Partial<Config>;
   const config = { ...DEFAULTS, ...stored, ...(forceEffectDefaults ? EFFECT_DEFAULTS : {}) };
+
+  if (stored.topbarLogoSize === 44 || stored.topbarLogoSize === 48) config.topbarLogoSize = ICON_DEFAULTS.topbarLogoSize;
 
   if (forceIconDefaults) {
     if (stored.topbarLogoSize === undefined || stored.topbarLogoSize === 36) config.topbarLogoSize = ICON_DEFAULTS.topbarLogoSize;
@@ -262,6 +280,97 @@ function applyConfig(c: Config) {
       margin-top: ${c.listItemSpacing}px !important;
     }
   `);
+
+  if (c.contentAlignment === "columnLeft") {
+    rules.push(`
+      #manifesto .landing-section-body {
+        width: fit-content !important;
+        max-width: min(100%, ${c.contentColumnWidth}px) !important;
+        margin-inline: auto !important;
+        text-align: left !important;
+      }
+      #manifesto .landing-section-body .landing-call-response {
+        align-items: stretch !important;
+        text-align: left !important;
+      }
+      #manifesto .landing-section-body .landing-call-response > div {
+        width: 100% !important;
+      }
+    `);
+  } else {
+    rules.push(`
+      #manifesto .landing-section-body {
+        width: auto !important;
+        max-width: none !important;
+        margin-inline: 0 !important;
+        text-align: center !important;
+      }
+      #manifesto .landing-section-body .landing-call-response {
+        align-items: center !important;
+        text-align: center !important;
+      }
+    `);
+  }
+
+  if (c.scheduleLayout === "alignedGrid") {
+    rules.push(`
+      .landing-schedule-list {
+        width: min(100%, ${c.scheduleColumnWidth}px) !important;
+        margin-inline: auto !important;
+      }
+      .landing-schedule-row {
+        display: grid !important;
+        grid-template-columns: ${c.scheduleNumWidth}px minmax(${c.scheduleTitleWidth}px, max-content) ${c.scheduleTimeWidth}px !important;
+        justify-content: center !important;
+        align-items: baseline !important;
+        column-gap: 18px !important;
+        text-align: left !important;
+      }
+      .landing-schedule-num {
+        text-align: left !important;
+      }
+      .landing-schedule-main {
+        display: block !important;
+        min-width: 0 !important;
+        text-align: center !important;
+      }
+      .landing-schedule-main .landing-step-title,
+      .landing-schedule-desc {
+        white-space: nowrap !important;
+      }
+      .landing-schedule-time {
+        text-align: center !important;
+      }
+      .landing-schedule-desc {
+        grid-column: auto !important;
+        justify-self: auto !important;
+        text-align: center !important;
+      }
+    `);
+  } else {
+    rules.push(`
+      .landing-schedule-list {
+        width: auto !important;
+        margin-inline: 0 !important;
+      }
+      .landing-schedule-row {
+        display: grid !important;
+        grid-template-columns: max-content max-content max-content !important;
+        justify-content: center !important;
+        align-items: baseline !important;
+        column-gap: 0.75rem !important;
+        text-align: center !important;
+      }
+      .landing-schedule-main {
+        display: contents !important;
+      }
+      .landing-schedule-desc {
+        grid-column: 1 / -1 !important;
+        justify-self: center !important;
+        text-align: center !important;
+      }
+    `);
+  }
 
   const effectTarget = c.heroEffectScope === "page" ? "body" : "#hero";
   const contentZIndex = c.heroEffectScope === "page" ? "auto" : "1";
@@ -508,6 +617,16 @@ export function FontConfigurator() {
         <Slider label="Weight" value={config.headingWeight} onChange={(v) => update("headingWeight", v)} min={300} max={900} step={100} unit="" />
         <Slider label="Tracking" value={config.headingTracking} onChange={(v) => update("headingTracking", v)} min={-0.05} max={0.18} step={0.005} unit="em" />
         <Slider label="Top gap" value={config.headingTopSpacing} onChange={(v) => update("headingTopSpacing", v)} min={0} max={120} step={2} unit="px" />
+      </Section>
+
+      <Section title="Content Layout" subtitle="Body column and schedule rows">
+        <Segmented label="Copy" value={config.contentAlignment} options={["center", "columnLeft"]} onChange={(v) => update("contentAlignment", v as ContentAlignment)} />
+        <Slider label="Copy col" value={config.contentColumnWidth} onChange={(v) => update("contentColumnWidth", v)} min={320} max={760} step={10} unit="px" />
+        <Segmented label="Schedule" value={config.scheduleLayout} options={["center", "alignedGrid"]} onChange={(v) => update("scheduleLayout", v as ScheduleLayout)} />
+        <Slider label="Sched col" value={config.scheduleColumnWidth} onChange={(v) => update("scheduleColumnWidth", v)} min={320} max={760} step={10} unit="px" />
+        <Slider label="Num col" value={config.scheduleNumWidth} onChange={(v) => update("scheduleNumWidth", v)} min={24} max={96} step={2} unit="px" />
+        <Slider label="Title col" value={config.scheduleTitleWidth} onChange={(v) => update("scheduleTitleWidth", v)} min={90} max={300} step={5} unit="px" />
+        <Slider label="Time col" value={config.scheduleTimeWidth} onChange={(v) => update("scheduleTimeWidth", v)} min={48} max={130} step={2} unit="px" />
       </Section>
 
       <Section title="Body Text" subtitle="Regular page copy only">
