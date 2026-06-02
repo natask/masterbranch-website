@@ -97,9 +97,9 @@ export const landingCopy: LandingCopy = {
   },
 
   principles: [
-    { title: "No BS", desc: "" },
-    { title: "No Sponsors", desc: "" },
-    { title: "No Excuses", desc: "" },
+    { title: "No BS", desc: "Only what works and how." },
+    { title: "No Sponsors", desc: "Only us making shit." },
+    { title: "No Excuses", desc: "Only unbridled ambition." },
   ],
 
   cta: {
