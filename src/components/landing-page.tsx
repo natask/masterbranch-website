@@ -285,7 +285,7 @@ export function LandingPage() {
             <div className={`landing-schedule-list landing-list ${sp.listWrap} ${sp.list}`}>
               {landingCopy.nights.steps.map((step, i) => (
                 <FadeIn key={step.num} className="landing-schedule-item" delay={0.1 + i * 0.08}>
-                  <div className="landing-schedule-row flex flex-col items-center gap-2">
+                  <div className="landing-schedule-row">
                     <span className="landing-schedule-num font-mono fluid-xs font-medium text-gold/30">{step.num}</span>
                     <div className="landing-schedule-main">
                       <h3 className="landing-step-title font-cinzel fluid-body font-normal tracking-wide text-white/80">

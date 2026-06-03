@@ -263,20 +263,38 @@ html.viewport-frame .font-configurator-panel {
 }
 
 .landing-schedule-row {
-  display: grid;
-  grid-template-columns: max-content max-content max-content;
-  justify-content: center;
-  align-items: baseline;
-  column-gap: 0.75rem;
+  position: relative;
+  display: block;
+  margin-inline: auto;
+  width: min(100%, 30rem);
+  min-height: 5.25rem;
+  text-align: center;
 }
 
 .landing-schedule-main {
-  display: contents;
+  display: block;
+  margin-inline: auto;
+  width: min(100%, 12rem);
+  text-align: center;
 }
 
 .landing-schedule-desc {
-  grid-column: 1 / -1;
-  justify-self: center;
+  max-width: none;
+}
+
+.landing-schedule-num {
+  position: absolute;
+  left: 20%;
+  top: 0.25rem;
+  text-align: right;
+}
+
+.landing-schedule-time {
+  position: absolute;
+  left: 70%;
+  top: 0.25rem;
+  text-align: left;
+  white-space: nowrap;
 }
 
 /* Gold gradient text */

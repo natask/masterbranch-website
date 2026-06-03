@@ -105,7 +105,7 @@ const DEFAULTS: Config = {
   callResponseGap: 10,
   contentAlignment: "center",
   contentColumnWidth: 560,
-  scheduleLayout: "center",
+  scheduleLayout: "alignedGrid",
   scheduleColumnWidth: 520,
   scheduleNumWidth: 42,
   scheduleTitleWidth: 150,
@@ -317,26 +317,29 @@ function applyConfig(c: Config) {
       .landing-schedule-list {
         width: min(100%, ${c.scheduleColumnWidth}px) !important;
         margin-inline: auto !important;
-        display: grid !important;
-        grid-template-columns: ${c.scheduleNumWidth}px minmax(${c.scheduleTitleWidth}px, max-content) ${c.scheduleTimeWidth}px !important;
-        justify-content: center !important;
-        column-gap: 18px !important;
+        display: block !important;
       }
       .landing-schedule-item {
-        display: grid !important;
-        grid-column: 1 / -1 !important;
-        grid-template-columns: subgrid !important;
+        display: block !important;
       }
       .landing-schedule-row {
-        display: contents !important;
-        align-items: baseline !important;
-        text-align: left !important;
+        position: relative !important;
+        display: block !important;
+        margin-inline: auto !important;
+        width: min(100%, 30rem) !important;
+        min-height: 5.25rem !important;
+        text-align: center !important;
       }
       .landing-schedule-num {
-        text-align: left !important;
+        position: absolute !important;
+        left: 20% !important;
+        top: 0.25rem !important;
+        text-align: right !important;
       }
       .landing-schedule-main {
         display: block !important;
+        margin-inline: auto !important;
+        width: min(100%, ${c.scheduleTitleWidth}px) !important;
         min-width: 0 !important;
         text-align: center !important;
       }
@@ -345,11 +348,14 @@ function applyConfig(c: Config) {
         white-space: nowrap !important;
       }
       .landing-schedule-time {
-        text-align: center !important;
+        position: absolute !important;
+        left: 70% !important;
+        top: 0.25rem !important;
+        text-align: left !important;
+        white-space: nowrap !important;
       }
       .landing-schedule-desc {
-        grid-column: auto !important;
-        justify-self: auto !important;
+        max-width: none !important;
         text-align: center !important;
       }
     `);
@@ -360,20 +366,40 @@ function applyConfig(c: Config) {
         margin-inline: 0 !important;
       }
       .landing-schedule-row {
-        display: grid !important;
-        grid-template-columns: max-content max-content max-content !important;
-        justify-content: center !important;
-        align-items: baseline !important;
-        column-gap: 0.75rem !important;
-        text-align: center !important;
+        position: relative !important;
+        display: block !important;
+        margin-inline: auto !important;
+        width: min(100%, 30rem) !important;
+        min-height: 5.25rem !important;
+        text-align: left !important;
       }
       .landing-schedule-main {
-        display: contents !important;
+        display: block !important;
+        margin-inline: auto !important;
+        width: min(100%, ${c.scheduleTitleWidth}px) !important;
+        min-width: 0 !important;
+        text-align: center !important;
+      }
+      .landing-schedule-main .landing-step-title,
+      .landing-schedule-desc {
+        white-space: nowrap !important;
       }
       .landing-schedule-desc {
-        grid-column: 1 / -1 !important;
-        justify-self: center !important;
+        max-width: none !important;
         text-align: center !important;
+      }
+      .landing-schedule-num {
+        position: absolute !important;
+        left: 20% !important;
+        top: 0.25rem !important;
+        text-align: right !important;
+      }
+      .landing-schedule-time {
+        position: absolute !important;
+        left: 70% !important;
+        top: 0.25rem !important;
+        text-align: left !important;
+        white-space: nowrap !important;
       }
     `);
   }
