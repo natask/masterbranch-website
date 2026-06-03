@@ -265,7 +265,7 @@ html.viewport-frame .font-configurator-panel {
 .landing-schedule-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(192px, 288px) minmax(0, 1fr);
-  align-items: start;
+  align-items: baseline;
   column-gap: clamp(24px, 4vw, 48px);
   margin-inline: auto;
   width: min(100%, 768px);
@@ -286,14 +286,12 @@ html.viewport-frame .font-configurator-panel {
 .landing-schedule-num {
   grid-column: 1;
   justify-self: end;
-  padding-top: 0.35rem;
   text-align: right;
 }
 
 .landing-schedule-time {
   grid-column: 3;
   justify-self: start;
-  padding-top: 0.35rem;
   text-align: left;
   white-space: nowrap;
 }

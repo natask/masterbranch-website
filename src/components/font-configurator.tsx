@@ -325,7 +325,7 @@ function applyConfig(c: Config) {
       .landing-schedule-row {
         display: grid !important;
         grid-template-columns: minmax(0, 1fr) minmax(${c.scheduleTitleWidth}px, 288px) minmax(0, 1fr) !important;
-        align-items: start !important;
+        align-items: baseline !important;
         column-gap: clamp(24px, 4vw, 48px) !important;
         margin-inline: auto !important;
         width: min(100%, 768px) !important;
@@ -334,7 +334,6 @@ function applyConfig(c: Config) {
       .landing-schedule-num {
         grid-column: 1 !important;
         justify-self: end !important;
-        padding-top: 0.35rem !important;
         text-align: right !important;
       }
       .landing-schedule-main {
@@ -350,7 +349,6 @@ function applyConfig(c: Config) {
       .landing-schedule-time {
         grid-column: 3 !important;
         justify-self: start !important;
-        padding-top: 0.35rem !important;
         text-align: left !important;
         white-space: nowrap !important;
       }
@@ -368,7 +366,7 @@ function applyConfig(c: Config) {
       .landing-schedule-row {
         display: grid !important;
         grid-template-columns: minmax(0, 1fr) minmax(${c.scheduleTitleWidth}px, 288px) minmax(0, 1fr) !important;
-        align-items: start !important;
+        align-items: baseline !important;
         column-gap: clamp(24px, 4vw, 48px) !important;
         margin-inline: auto !important;
         width: min(100%, 768px) !important;
@@ -392,13 +390,11 @@ function applyConfig(c: Config) {
       .landing-schedule-num {
         grid-column: 1 !important;
         justify-self: end !important;
-        padding-top: 0.35rem !important;
         text-align: right !important;
       }
       .landing-schedule-time {
         grid-column: 3 !important;
         justify-self: start !important;
-        padding-top: 0.35rem !important;
         text-align: left !important;
         white-space: nowrap !important;
       }
