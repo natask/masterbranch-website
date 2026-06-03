@@ -263,18 +263,19 @@ html.viewport-frame .font-configurator-panel {
 }
 
 .landing-schedule-row {
-  position: relative;
-  display: block;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(192px, 288px) minmax(0, 1fr);
+  align-items: start;
+  column-gap: clamp(24px, 4vw, 48px);
   margin-inline: auto;
-  width: min(100%, 30rem);
-  min-height: 5.25rem;
+  width: min(100%, 768px);
   text-align: center;
 }
 
 .landing-schedule-main {
   display: block;
-  margin-inline: auto;
-  width: min(100%, 12rem);
+  grid-column: 2;
+  min-width: 0;
   text-align: center;
 }
 
@@ -283,16 +284,16 @@ html.viewport-frame .font-configurator-panel {
 }
 
 .landing-schedule-num {
-  position: absolute;
-  left: 20%;
-  top: 0.25rem;
+  grid-column: 1;
+  justify-self: end;
+  padding-top: 0.35rem;
   text-align: right;
 }
 
 .landing-schedule-time {
-  position: absolute;
-  left: 70%;
-  top: 0.25rem;
+  grid-column: 3;
+  justify-self: start;
+  padding-top: 0.35rem;
   text-align: left;
   white-space: nowrap;
 }

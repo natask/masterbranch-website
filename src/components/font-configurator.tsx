@@ -323,23 +323,23 @@ function applyConfig(c: Config) {
         display: block !important;
       }
       .landing-schedule-row {
-        position: relative !important;
-        display: block !important;
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) minmax(${c.scheduleTitleWidth}px, 288px) minmax(0, 1fr) !important;
+        align-items: start !important;
+        column-gap: clamp(24px, 4vw, 48px) !important;
         margin-inline: auto !important;
-        width: min(100%, 30rem) !important;
-        min-height: 5.25rem !important;
+        width: min(100%, 768px) !important;
         text-align: center !important;
       }
       .landing-schedule-num {
-        position: absolute !important;
-        left: 20% !important;
-        top: 0.25rem !important;
+        grid-column: 1 !important;
+        justify-self: end !important;
+        padding-top: 0.35rem !important;
         text-align: right !important;
       }
       .landing-schedule-main {
         display: block !important;
-        margin-inline: auto !important;
-        width: min(100%, ${c.scheduleTitleWidth}px) !important;
+        grid-column: 2 !important;
         min-width: 0 !important;
         text-align: center !important;
       }
@@ -348,9 +348,9 @@ function applyConfig(c: Config) {
         white-space: nowrap !important;
       }
       .landing-schedule-time {
-        position: absolute !important;
-        left: 70% !important;
-        top: 0.25rem !important;
+        grid-column: 3 !important;
+        justify-self: start !important;
+        padding-top: 0.35rem !important;
         text-align: left !important;
         white-space: nowrap !important;
       }
@@ -366,12 +366,13 @@ function applyConfig(c: Config) {
         margin-inline: 0 !important;
       }
       .landing-schedule-row {
-        position: relative !important;
-        display: block !important;
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) minmax(${c.scheduleTitleWidth}px, 288px) minmax(0, 1fr) !important;
+        align-items: start !important;
+        column-gap: clamp(24px, 4vw, 48px) !important;
         margin-inline: auto !important;
-        width: min(100%, 30rem) !important;
-        min-height: 5.25rem !important;
-        text-align: left !important;
+        width: min(100%, 768px) !important;
+        text-align: center !important;
       }
       .landing-schedule-main {
         display: block !important;
@@ -389,15 +390,15 @@ function applyConfig(c: Config) {
         text-align: center !important;
       }
       .landing-schedule-num {
-        position: absolute !important;
-        left: 20% !important;
-        top: 0.25rem !important;
+        grid-column: 1 !important;
+        justify-self: end !important;
+        padding-top: 0.35rem !important;
         text-align: right !important;
       }
       .landing-schedule-time {
-        position: absolute !important;
-        left: 70% !important;
-        top: 0.25rem !important;
+        grid-column: 3 !important;
+        justify-self: start !important;
+        padding-top: 0.35rem !important;
         text-align: left !important;
         white-space: nowrap !important;
       }
